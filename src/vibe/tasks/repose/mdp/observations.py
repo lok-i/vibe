@@ -1,9 +1,7 @@
 """Repose-local observation terms — the cube's color/orientation obs.
 
-`image_feature` moved to `vibe.core.mdp.observations` (2026-08-03) — it reads a
-camera, it never knew about a cube. Re-exported rather than deleted: a saved
-env cfg from an earlier run stores the term by its DEFINING module path, so
-dropping the name here would break reloading one.
+`image_feature` lives in `vibe.core.mdp.observations`; it is re-exported here
+because a saved env cfg stores a term by its DEFINING module path.
 """
 
 from __future__ import annotations
@@ -21,8 +19,7 @@ def object_goal_color(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor
 
     The color-goal command encoding (extero="imgfeat"): the actor's only task
     signal — the goal QUAT never reaches it (grounding the command in vision is
-    the point). Phase 2: swap the identity table for a (6, D) offline
-    text-embedding matrix — same term, richer code.
+    the point).
     """
     cmd = env.command_manager.get_term(command_name)
     return torch.eye(6, device=env.device)[cmd.goal_color_idx]

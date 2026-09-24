@@ -7,14 +7,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOCK_FILE="$REPO_ROOT/deps.lock"
 
 # ── git-lfs on a shared login node ────────────────────────────────────────────
-# git-lfs is a Go binary: it fans out `lfs.concurrenttransfers` workers on top of a runtime
-# thread pool sized to GOMAXPROCS = every core it can see (64 on CARC's Discovery login
-# node). Walking a 12k-file dataset that way aborts mid-transfer with
-#   runtime/cgo: pthread_create failed: Resource temporarily unavailable / SIGABRT
-# Two guards: cap the fan-out, and don't pull at all when nothing is on a pointer.
-# GOMAXPROCS is the guard that matters — the SIGABRT came from a 64-wide runtime pool,
-# not from the transfer count — so the fan-out can be useful while staying capped.
-# A shared login node that still aborts: LFS_JOBS=2 LFS_GOMAXPROCS=2.
+# git-lfs sizes its Go runtime pool to every visible core; on a login node with a process
+# cap that aborts with `pthread_create failed` / SIGABRT. GOMAXPROCS is the guard that
+# matters. Still aborting: LFS_JOBS=1 LFS_GOMAXPROCS=2 (docs/setup.md).
 LFS_JOBS=${LFS_JOBS:-8}
 LFS_GOMAXPROCS=${LFS_GOMAXPROCS:-4}
 LFS_RETRIES=${LFS_RETRIES:-3}
@@ -46,19 +41,10 @@ lfs_retry() {
 }
 
 # ── fetch one SHA, depth 1 ───────────────────────────────────────────────────
-# Hugging Face's git server dies mid-negotiation with
-#     fatal: error reading section header 'acknowledgments'
-# whenever the client offers a `have` for a commit under HF's PULL-REQUEST namespace. A
-# CLONED worktree carries `+refs/heads/*:refs/remotes/origin/*`, so it holds a
-# `refs/remotes/origin/pr/N` the server cannot reach from any branch; deleting that ONE ref
-# makes the default fetch succeed again (measured). A worktree this script created never has
-# it — `init` + `remote add` sets no refspec, so nothing but FETCH_HEAD is ever written,
-# which is why CARC has never seen this and a dev box that once ran `git clone` always does.
-#
-# Not a protocol-version problem: v0 and v1 both get `remote end hung up` (HF is v2-only).
-# `noop` sends zero `have` lines — which is also the honest setting, since every fetch here
-# is depth=1 at an exact SHA and has no delta to negotiate. Needs git >= 2.32; the retry
-# covers older git, where the value is rejected outright (CARC 2.43, dev 2.34 — both fine).
+# `noop` negotiation sends zero `have` lines: Hugging Face's git server dies with
+# "error reading section header 'acknowledgments'" when offered a ref from its pull-request
+# namespace (a hand-cloned worktree holds one). Every fetch here is depth 1 at an exact SHA,
+# so there is nothing to negotiate. Needs git >= 2.32; the retry covers older git.
 fetch_sha() {
     local repo="$1" sha="$2"
     if git -C "$repo" -c fetch.negotiationAlgorithm=noop \
@@ -89,11 +75,9 @@ spin() {
 }
 
 # ── the venv: uv-only, and the script activates it for itself ────────────────
-# conda and vanilla pip are deprecated: CARC already runs a uv venv, orcs documents uv,
-# and one installer means one resolution story. DEPS_PIP_CMD stays as an escape hatch.
-#
-# An ACTIVE venv wins (CARC's flow); otherwise the repo's `.venv`, so a fresh clone needs
-# no activation. "Active" means VIRTUAL_ENV holds a `pyvenv.cfg` — a conda prefix has none.
+# An ACTIVE venv wins; otherwise the repo's `.venv`, so a fresh clone needs no activation.
+# "Active" means VIRTUAL_ENV holds a `pyvenv.cfg` — a conda prefix has none.
+# DEPS_PIP_CMD is the escape hatch.
 use_venv() {  # use_venv [create]
     if [ -n "${DEPS_PIP_CMD:-}" ]; then
         echo "[ENV] DEPS_PIP_CMD override: $DEPS_PIP_CMD"
@@ -247,11 +231,9 @@ sync_rows() {  # sync_rows <rows>
 }
 
 # ── verify: every worktree at its pinned SHA ─────────────────────────────────
-# The last gate before a GPU is booked. Two ways the tree and the lock disagree, both silent
-# everywhere else and both worth hours: a lock bumped to a SHA that was never PUSHED (the
-# sync resolves nothing and the host keeps training the old code), and a worktree parked on a
-# local branch. Every dep is an editable install, so a matching HEAD *is* a matching import —
-# no package-level check needed.
+# The last gate before a GPU is booked: catches a lock bumped to an unpushed SHA and a
+# worktree parked on a local branch. Every dep is editable, so a matching HEAD IS a
+# matching import.
 verify_rows() {  # verify_rows <rows> <label>
     local rc=0 name url sha rel_path rest head note status
     echo

@@ -208,8 +208,7 @@ class ReposeMotionCommand(ObjectMotionCommand):
         self.metrics["at_goal_color"] = at_goal_color
         # ANYTIME success. CommandTerm.reset logs mean(metric[env_ids]) AT the
         # reset step, so `at_goal_color` is a TERMINAL-step rate; this running
-        # max is its any-frame counterpart (the offline eval's headline number,
-        # and the axis on which train and eval ranked runs differently).
+        # max is its any-frame counterpart.
         self.metrics["at_goal_color_ever"] = torch.maximum(
             self.metrics["at_goal_color_ever"], at_goal_color)
         self._refresh_goal_color_gui()

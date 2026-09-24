@@ -11,8 +11,7 @@ called and what shape it has. A task assembles these into ITS groups in
     [groups]    kv_tokens_group / cls_query_group
 
 Group NAMES live here because both sides read them — the env builds the group,
-the agent cfg names it in `extractor_cfg` — and a name spelled twice is a name
-that drifts (docs/infra/agents.md §3).
+the agent cfg names it in `extractor_cfg` — and a name spelled twice drifts.
 """
 
 from __future__ import annotations
@@ -28,25 +27,14 @@ from vibe.core.mdp.observations import image_feature
 __all__ = [
     "IMG_ENCODER", "IMG_DTYPE",
     "TOKEN_GROUP", "TOKEN_TERMS", "CLS_GROUP", "CAMERA_GROUP",
-    "CamSpec", "img_tokens_term", "img_cls_term",
+    "CamSpec", "img_tokens_term", "img_cls_term", "img_flat_term",
     "kv_tokens_group", "cls_query_group", "camera_group",
 ]
 
 # --- default frozen vision encoder --------------------------------------------
-# BACKBONE SWAP = flip TWO lines, and they are COUPLED: `IMG_ENCODER` here and
-# the task's default query rows (`q_cls` belongs to a CLIP-family CLS only).
-# Both blocks are marked [THEIA] / [CLIP] — swap them as a pair or the extractor
-# spends an attention row on an untrained token.
-#
-# REVERTED TinyCLIP -> Theia (2026-07-22, the encoder bake-off). The swap to TinyCLIP rode on "Theia is color-blind"; the probe says
-# otherwise — Theia reads up-face color at 0.874 (chance 0.167), only 0.027 behind
-# TinyCLIP — while the swap cost 0.117 of DENSE LOCALIZATION (IoU 0.711 -> 0.594),
-# the one axis the cross-attn extractor actually pools on. "Color-blind" had
-# conflated "no text tower" (true) with "doesn't encode color" (false).
-# Same 14x14/196-token/stride-16 grid both ways, so that IoU delta is like-for-like.
-IMG_ENCODER = "theia-tiny-patch16-224-cddsv"  # [THEIA] `_load` prefixes "theaiinstitute/"
-# IMG_ENCODER = "wkcn/TinyCLIP-ViT-39M-16-Text-19M-YFCC15M"  # [CLIP] HF CLIPVisionModel
-# IMG_ENCODER = "openai/clip-vit-base-patch32"              # [CLIP] best CLIP-side IoU (7x7 grid)
+# Theia-tiny: kept over TinyCLIP for dense localization, the axis the extractor
+# pools on. Swap per run with `--env.img-encoder <hf-id>` (`VibeEnvCfg`).
+IMG_ENCODER = "theia-tiny-patch16-224-cddsv"  # `image_feature._load` prefixes "theaiinstitute/"
 IMG_DTYPE = "float16"  # encoder COMPUTE dtype (obs still returns fp32) — bench parity, halves cost
 
 # --- group naming (single source of truth; imported env-side AND agent-side) ---
@@ -106,11 +94,10 @@ def camera_group(c: CamSpec) -> ObservationGroupCfg:
 
 
 def cls_query_group(c: CamSpec) -> ObservationGroupCfg:
-    """Encoder global token as a query row.
+    """Encoder global token as a query row — on for every backbone.
 
-    Meaningful for CLIP/TinyCLIP (Theia's CLS ~ noise), yet kept ON for Theia
-    too: a diffuse attention row IS a mean-pool row, so this is the one
-    sanctioned global-pool path into z — without it that path is inexpressible,
-    and with two of them the rows duplicate `proj` params.
+    Theia's CLS is untrained, yet the row stays: a diffuse attention row IS a
+    mean-pool row, so this is the one global-pool path into z. Without it that
+    path is inexpressible; with two such rows they duplicate `proj` params.
     """
     return _grp({"img_cls": img_cls_term(c.sensor, c.model, c.model_dtype)})

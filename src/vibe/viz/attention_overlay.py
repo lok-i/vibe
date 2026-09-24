@@ -1,13 +1,10 @@
 """Cross-attention mask overlay for the viser play viewer.
 
-Bridges the agent/env divide flagged in the design: the CrossAttentionExtractor
-caches its last forward's attention (``cross_attention.LATEST_ATTENTION``, agent
-side), the head_cam sensor holds the FPV rgb (env side). This panel reads both
-each camera frame and paints the (Q, P) attention over the image.
-
-Token layout: Theia ``patch16`` on the head_cam (H, W) → a (H//16, W//16) patch
-grid, P tokens per query. Query order matches the extractor's forward: the
-command query (``object_goal_ori``) first when present, then the learned queries.
+The CrossAttentionExtractor caches its last forward's attention
+(``cross_attention.LATEST_ATTENTION``, agent side); the head_cam sensor holds the FPV rgb
+(env side). This panel reads both each camera frame and paints the (Q, P) attention over the
+image: a stride-16 backbone on the head cam gives an (H//16, W//16) grid, one row per query
+group, labelled by the extractor's `query_labels`.
 """
 
 from __future__ import annotations

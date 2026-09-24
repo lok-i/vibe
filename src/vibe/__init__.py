@@ -1,4 +1,4 @@
-"""vibe — visual behavior adaptation for exteroceptive whole-body control.
+"""vibe — visual behavior adaptation for whole-body control.
 
 Importing this package registers every task family under `vibe.tasks` with
 mjlab and patches the mjlab scripts. `core.paths.bind_orcs()` runs first to

@@ -1,6 +1,6 @@
 """Register the G1 dodgeball VISION tasks with mjlab.
 
-Naming: `Vibe-<Task>-<Extero>[-<Suffix>]` (docs/infra/naming.md). Dodge carries
+Naming: `Vibe-<Task>-<Extero>[-<Suffix>]` (docs/tasks.md). Dodge carries
 no `<RobotMotionRew>` slot — orcs's dodge is motion tracking against a held
 stand, and a one-valued axis is not an axis.
 

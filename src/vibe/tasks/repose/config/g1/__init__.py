@@ -1,8 +1,7 @@
 """Register G1 Repose tasks with mjlab.
 
-Naming: ``Vibe-Repose-<Scene>-<Extero>[-<Aux>]``. SONIC is the only base, so it
-does not occupy a one-valued name slot. ``BigCubeFloor`` carries the existing
-six rows; ``SmallCubeTable`` initially carries the ImgFeat-Ext row.
+Naming: ``Vibe-Repose-<Scene>-<Extero>[-<Suffix>]`` (docs/tasks.md). ``BigCubeFloor``
+carries six rows; ``SmallCubeTable`` the ImgFeat-Ext row.
 
   ObjKin   object kinematic state — the privileged twin
   ImgRgb   raw head-camera RGB through a trainable CNN (the baseline)
@@ -20,11 +19,7 @@ extractor layout):
                 wandb panel per target term, derived from the group)
   -ImgFeat-Lfd  latent FD vs EMA (PPOAux, SSL)
 
-The retired Reg probe = Sfd with unroll_steps=1, start_with_current_step=True,
-autoregress=False (agent_cfgs._AUX_VARIANTS note).
-
-Privileged/from-scratch baselines are NOT here — they live in orcs
-(`Orcs-Uolm-AdaptSonic`, `Orcs-Uolm-TaRa`), where oracle policies belong.
+The privileged baselines for the other families live in orcs (`Orcs-*-AdaptSonic`).
 """
 
 from mjlab.tasks.registry import register_mjlab_task
@@ -38,10 +33,7 @@ from vibe.tasks.repose.config.g1.env_cfgs import g1_repose_cube_env_cfg
 from vibe.tasks.repose.config.g1.export_case import policy_export_test
 from vibe.tasks.repose.config.g1.runner import VibeOnPolicyRunner
 
-# `experiment_name` here is only the default: every real run overrides it on the
-# command line, and checkpoints live in wandb rather than under the local
-# `logs/rsl_rl/<name>/` mirror. It follows the task id.
-
+# `experiment_name` defaults: `logs/rsl_rl/<name>/`, following the task id.
 _BIG_EXP = "g1_repose_big_cube_floor"
 _SMALL_EXP = "g1_repose_small_cube_table"
 

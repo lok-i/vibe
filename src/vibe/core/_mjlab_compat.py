@@ -1,22 +1,19 @@
-"""Compat shim: let mjlab's train/play scripts tolerate vibe's multi-clip motion command.
+"""Every patch vibe applies to mjlab, at `import vibe`. Idempotent; no mjlab fork.
 
-Both scripts flag a task as "tracking" via ``isinstance(cmd, MotionCommandCfg)`` and then force
-an *external single-file* motion resolution:
+| patch | why | inert when |
+|---|---|---|
+| `MotionCommandCfg` sentinel in train/play | both scripts treat any `MotionCommandCfg` as single-file tracking (train passes `registry_name`, play demands `--motion-file`); the multi-clip cfgs load their own dataset | a genuine single-file tracking task |
+| `_patch_play_init_agent` | `--agent auto`, `initial`, `release` on play | `--agent zero`, `random`, `trained` |
+| `_patch_play_attn_viewer` | viser play gets the attention overlay, camera director and recorder | no head cam / no extractor (panel not built) |
+| `_patch_viser_dark_mode` | viser starts dark | — |
+| `_muffle_mesh_support_warning` | drops host-side GJK "mesh_support" spam on variant scenes (physics runs on mujoco_warp) | every other MuJoCo warning prints |
+| `_patch_put_data_nccdmax` | caps mujoco_warp's CCD scratch per world (`VIBE_NCCDMAX`, default 64) | the caller passes `nccdmax` itself |
+| `_patch_inductor_tf32` | one tf32 API, so Inductor does not crash on the mix | without `--agent.torch-compile-mode` (besides the precision call) |
+| `_patch_amp_env_override` | `VIBE_AMP=bfloat16` sets the agent amp dtype, play included | `VIBE_AMP` unset |
+| `_patch_variant_scene_indexing` | a camera on a variant scene left every entity at body id -1 | the scene spec is not stale |
 
-  - ``train.py``  -> passes ``registry_name`` to the runner (default runner rejects the kwarg).
-  - ``play.py``   -> demands ``--motion-file`` / WandB registry, else raises before it can play
-                     a local checkpoint.
-
-Vibe's :class:`ObjectMotionCommandCfg` is named ``"motion"`` (tracking rewards/obs key on it)
-and *is* a ``MotionCommandCfg`` subclass, but it loads its own multi-clip dataset from
-``dataset_dir`` — so that single-file path is both unnecessary and fatal for local runs.
-
-Rather than rename the command or fork the scripts, we swap the ``MotionCommandCfg`` symbol inside
-each script for a metaclass sentinel whose ``isinstance`` reports our multi-clip cfg as *not* a
-plain tracking cfg. Genuine mjlab single-file tracking tasks are untouched (still report True).
-
-Idempotent, import-time. ``import vibe`` runs before either script's ``run_*``, since both call
-``import mjlab.tasks`` (which imports this package via the entry point) before doing any work.
+The script patches are ONE global each and orcs applies its own at `import orcs`; vibe patches
+last, so it must cover the union (`orcs.MULTI_CLIP_CFGS`, the parent's `--agent` choices).
 """
 
 from __future__ import annotations
@@ -298,12 +295,9 @@ def _patch_put_data_nccdmax() -> None:
 def _muffle_mesh_support_warning() -> None:
     """Silence libmujoco's "mesh_support could not find support vertex" spam.
 
-    Emitted by the HOST model's GJK (engine_collision_gjk) for the omni-object
-    variant scenes — padded mesh slots / thin convex-decomposition slivers give
-    degenerate support queries. Physics runs on mujoco_warp (GPU), so the host
-    warning is cosmetic; rollouts are unaffected (verified 2026-07-12). Every
-    OTHER MuJoCo warning still prints. Root-cause (mjlab variant padding) is
-    parked upstream.
+    Emitted by the HOST model's GJK for the omni-object variant scenes — padded
+    mesh slots give degenerate support queries. Physics runs on mujoco_warp, so
+    the host warning is cosmetic. Every OTHER MuJoCo warning still prints.
     """
     import mujoco
 
@@ -320,10 +314,9 @@ def _patch_play_init_agent() -> None:
 
     "initial" = instantiate the task's ACTUAL agent (actor cfg, base_checkpoint
     and all) but load NO training checkpoint — the freshly constructed policy
-    is rolled out. For adapter agents this is the frozen base bit-exact
-    (zero-init LoRA / zero-init sidecar); for TaRa it's the untrained MLP.
-    Unlike ``--agent zero`` (zero ACTIONS), this debugs/visualizes the real
-    model stack: obs plumbing, base-ckpt load, normalizers, action heads.
+    is rolled out. For an adapter agent this is the frozen base bit-exact
+    (zero-init LoRA). Unlike ``--agent zero`` (zero ACTIONS), this exercises the
+    real model stack: obs plumbing, base-ckpt load, normalizers, action heads.
 
     Mechanics: main() resolves ``PlayConfig`` and ``run_play`` as module
     globals at call time, so swapping both on the module is enough. tyro
@@ -353,15 +346,9 @@ def _patch_play_init_agent() -> None:
     # rolls out an untrained policy.
     _CKPT_SOURCES = ("wandb_run_path", "registry_name", "checkpoint_file")
 
-    # DEFAULT since 2026-08-06, against mjlab's "trained": **auto**, not
-    # `initial`. Bare `play <task>` is a look-at-the-scene command — a camera
-    # aim, a floor colour, an obs shape — and every one of those wants the
-    # real model stack with no checkpoint hunt. But `--wandb-run-path <p>`
-    # with no `--agent` is unambiguously "play THESE weights", and a fixed
-    # `initial` default would ignore them and roll out an untrained policy
-    # that still moves — the failure would look like a bad checkpoint.
-    # So the default is inferred from whether a checkpoint was named, and
-    # the resolution is always printed. An explicit `--agent` still wins.
+    # Default `auto`, against mjlab's "trained": bare `play <task>` looks at the
+    # scene with the real model stack (initial), while a named checkpoint with no
+    # `--agent` plays those weights (trained). The resolution is always printed.
     # Choices = the parent's UNION vibe's, as a real Literal (make_dataclass:
     # a class-body annotation is a string here, and cannot name a local).
     _agents = get_args(get_type_hints(_OrigPlayConfig)["agent"])

@@ -4,16 +4,12 @@ This is not a domain. `rand_face_colors` is what DEFINES the goal (the
 commanded colour is read off the perm it writes), which is why it survives the
 play build while every `rand_*` domain knob is stripped.
 
-The camera / light / terrain-colour terms moved to `vibe.core.mdp.events`
-(2026-08-06) when a second task needed them — they mention neither a cube nor a
-terrain type. Re-exported here: a saved env cfg records a term by its DEFINING
-module path, so an earlier run's cfg still reloads.
+The camera / light / terrain-colour terms live in `vibe.core.mdp.events` and are
+re-exported here: a saved env cfg records a term by its DEFINING module path.
 
-Recipe + sharp bits: docs/perception/render_domain.md — fields are declared via
-@requires_model_fields so the EventManager expands them per-world BEFORE
-graph capture (bug #1 structurally impossible). NOTE: the groundplane
-checker TEXTURE beats mat_rgba — the color-task cfg flips head_cam
-use_textures=False (env_cfgs).
+Fields are declared via @requires_model_fields so the EventManager expands them
+per-world BEFORE graph capture. The groundplane checker TEXTURE beats mat_rgba,
+so the colour-task cfg flips the head cam's `use_textures=False` (env_cfgs).
 """
 
 from __future__ import annotations

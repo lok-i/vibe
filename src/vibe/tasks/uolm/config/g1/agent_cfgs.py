@@ -19,7 +19,7 @@ from mjlab.rl import RslRlOnPolicyRunnerCfg
 from vibe.core.rl import adapt_sonic_agent_cfg, attach_extractor
 from vibe.tasks.uolm.config.g1 import observation_cfgs
 
-# Sized off the privileged twin (orcs b34106b), not chosen here: `Adapter.scale
+# Sized off the privileged twin (`Orcs-Uolm-AdaptSonic`), not chosen here: `Adapter.scale
 # = alpha / rank`, so alpha tracks rank or raising rank SHRINKS the delta, and
 # 28 is the CEILING — the decoder's output layer is (512 -> 29), and at
 # rank >= min(in, out) the adapter silently takes a full-rank branch at
@@ -48,9 +48,8 @@ def adapt_sonic_ext_agent_cfg(
     this row answers "does a task gradient reach a vision encoder at all" before
     any auxiliary objective is spent on the question. LoRA sizing and the std
     band are its privileged twin's, so a delta against `Orcs-Uolm-AdaptSonic` is
-    the exteroception and nothing else. Requires the env cfg built with
-    `aux=True` (its token + query groups feed the extractor — the coupling is
-    group NAMES only, shared via `observation_cfgs`).
+    the exteroception and nothing else. The env's token + query groups feed the
+    extractor by NAME (`observation_cfgs`).
     """
     cfg = adapt_sonic_agent_cfg(experiment_name, rank=rank, alpha=alpha,
                                 std_scale=std_scale)

@@ -12,6 +12,7 @@ dtype, tags, gate tolerance). CLI only cherry-picks:
     export-encoder                       # every tag in the yaml
     export-encoder --tag theia-tiny      # one artifact
     export-encoder --out /path/models    # land artifacts elsewhere
+    export-encoder --config src/vibe/export/encoder/export_enc_dodge.yaml   # ConeFast's 64-px cam
 
 Per tag: `<tag>.onnx` + `<tag>.manifest.json` (vision.onnx.v1, also embedded in
 `metadata_props`), gated by a torch-vs-ORT parity check on random frames —

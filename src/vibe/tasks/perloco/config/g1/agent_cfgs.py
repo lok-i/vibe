@@ -31,9 +31,8 @@ def adapt_sonic_ext_agent_cfg(
 
     Extractor-only (`-Ext`): the extractor is trained by PPO gradients alone, so
     this row answers "does a task gradient reach a vision encoder at all" before
-    any auxiliary objective is spent on the question. Requires the env cfg built
-    with `aux=True` (its token + query groups feed the extractor — the coupling
-    is group NAMES only, shared via `observation_cfgs`).
+    any auxiliary objective is spent on the question. The env's token + query
+    groups feed the extractor by NAME (`observation_cfgs`).
     """
     cfg = adapt_sonic_agent_cfg(experiment_name, rank=rank, alpha=alpha)
     attach_extractor(cfg, query_groups, extractor=extractor)

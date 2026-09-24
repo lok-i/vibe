@@ -152,7 +152,7 @@ def build_encoder_manifest(
     compute_dtype: str,
     opset: int,
 ) -> dict:
-    """vision.onnx.v1 — the sidecar for a frozen-encoder export (`vibe.export.encoder`).
+    """vision.onnx.v1 — the manifest of a frozen-encoder export (`vibe.export.encoder`).
 
     Grid and dims are MEASURED from a real forward, never derived arithmetically;
     preprocessing (cast, /255, BGR->RGB, layout, per-model normalization) is baked

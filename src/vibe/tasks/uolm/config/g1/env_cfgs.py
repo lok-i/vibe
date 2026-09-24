@@ -9,12 +9,9 @@ object kinematics (and the object_id one-hot) become frozen encoder features
 from the head camera. That is what makes this row comparable to
 `Orcs-Uolm-AdaptSonic` rather than merely similar to it.
 
-**This row is built to transfer** (2026-08-06). Run 1 held everything at orcs
-parity to isolate the exteroception swap; it worked, so the question is now
-hardware. Two changes follow: the adapter loses every privileged term it had
-left (root state out, goal moved to a query row — `observation_cfgs`), and vibe
-adds the render domain repose transferred on. orcs's physical robustness domain
-still rides along verbatim underneath.
+Beyond the swap, the adapter drops every other privileged term (root state out,
+the goal moved to a query row — `observation_cfgs`) and trains with the render
+domain on top of orcs's physical robustness domain.
 """
 
 from __future__ import annotations

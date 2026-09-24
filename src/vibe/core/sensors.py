@@ -24,10 +24,7 @@ def head_cam_cfg(**overrides) -> CameraSensorCfg:
     Token grid follows the frame: the backbone patchifies at stride 16 with no
     resize, so P = floor(112/16) x floor(63/16) = 7 x 3 = 21 — the ZAttention
     normalizer. NOT logged (constant per run, implied by these numbers), so
-    recompute it by hand on any change here: it re-bases every attention number
-    and re-grids the offline ZGrounding patch mapping, which is why the offline
-    eval reads P off the attention tensor and cross-checks it against this cfg
-    (docs/perception/metrics.md §1, §5.2).
+    recompute it by hand on any change here: it re-bases every attention number.
 
     The 45 deg down pitch sees ~0.46 m to ~2.4 m ahead on flat ground — the
     manipulation workspace for repose, the stepping window for perloco.
