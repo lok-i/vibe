@@ -373,23 +373,25 @@ def _patch_play_init_agent() -> None:
     def run_play(task_id: str, cfg):
         from vibe import release
 
+        requested = cfg.agent
+        named = [s for s in _CKPT_SOURCES if getattr(cfg, s, None)]
+        flags = ", ".join("--" + s.replace("_", "-") for s in named)
+        if cfg.agent == "initial" and named:
+            raise ValueError(f"--agent initial loads no checkpoint; drop {flags}")
         if cfg.agent == "release" and task_id in release.released_model_ids():
-            named = [s for s in _CKPT_SOURCES if getattr(cfg, s, None)]
             if named:
-                raise ValueError(f"--agent release cannot be combined with "
-                                 f"{', '.join('--' + s.replace('_', '-') for s in named)}")
+                raise ValueError(f"--agent release cannot be combined with {flags}")
             ckpt = release.ensure_released_model(task_id)
             cfg = dataclasses.replace(cfg, agent="trained", checkpoint_file=str(ckpt))
-        # Stash for the take recorder: play never exposes the resolved checkpoint,
-        # and clips belong next to the weights that produced them.
-        play._vibe_play_ctx = (task_id, cfg)
-        if cfg.agent == "auto":
-            named = [s for s in _CKPT_SOURCES if getattr(cfg, s, None)]
+        elif cfg.agent == "auto":
             resolved = "trained" if named else "initial"
             print(f"[INFO]: agent=auto -> {resolved}"
                   + (f" ({', '.join(named)} given)" if named
                      else " (no checkpoint named)"))
             cfg = dataclasses.replace(cfg, agent=resolved)
+        # Stash for the take recorder (`vibe.viz.session`): play never exposes the
+        # resolved checkpoint, and a clip is filed under the agent that was ASKED for.
+        play._vibe_play_ctx = (task_id, cfg, "release" if requested == "release" else cfg.agent)
         if cfg.agent != "initial":
             return _orig_run_play(task_id, cfg)
 

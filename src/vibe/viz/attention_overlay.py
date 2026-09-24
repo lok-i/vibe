@@ -188,7 +188,7 @@ class AttnViserPlayViewer(ViserPlayViewer):
             meta_fn=lambda: {"attn_query": self._attn_panel.query if self._attn_panel else None},
             paused_fn=lambda: self._is_paused,
         )
-        if os.environ.get("VIBE_REC"):
+        if os.environ.get("VIBE_PAUSED") or os.environ.get("VIBE_REC"):  # VIBE_REC: old name
             self.pause()  # set the shot before a single step is taken
 
     # Frame taps for the recorder: whatever the panels are showing, as numpy.

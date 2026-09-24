@@ -7,7 +7,9 @@
   3. `--agent release` ROUTES by manifest: a vibe task to vibe's, anything else to
      orcs's handler, and a named checkpoint beside it is refused;
   4. `export-agent --release` routes the same way, and the exporter imports
-     without onnxruntime (only its check/viewer need it).
+     without onnxruntime (only its check/viewer need it);
+  5. a released play files its clips under `videos/<task>/release/`, never in the
+     download cache, and `--agent initial` refuses a named checkpoint.
 
 The downloader itself (verified, atomic, cached) is orcs's and tested there; here,
 only that vibe's cache is vibe's. No network, no checkpoint.
@@ -30,6 +32,7 @@ from mjlab.tasks.registry import list_tasks
 import vibe  # noqa: F401 — register tasks, apply the play patch
 from vibe import release
 from vibe.core.paths import VIBE_ROOT
+from vibe.viz import session
 
 
 def test_manifest_contract():
@@ -84,6 +87,24 @@ def test_release_refuses_a_named_checkpoint(monkeypatch):
     cfg = play.PlayConfig(agent="release", checkpoint_file="x.pt")
     with pytest.raises(ValueError, match="--checkpoint-file"):
         play.run_play("Vibe-Dodge-ImgFeat-Ext", cfg)
+
+
+def test_initial_refuses_a_named_checkpoint():
+    cfg = play.PlayConfig(agent="initial", checkpoint_file="x.pt")
+    with pytest.raises(ValueError, match="--agent initial loads no checkpoint"):
+        play.run_play("Vibe-Dodge-ImgFeat-Ext", cfg)
+
+
+@pytest.mark.parametrize("agent, ckpt, out", [
+    ("release", "/cache/vibe/v0.1.0/T/checkpoint.pt", "videos/T/release"),
+    ("trained", "/runs/r/model_9.pt", "/runs/r/videos/model_9"),
+    ("initial", None, "videos/T/initial"),
+])
+def test_clips_are_filed_by_agent(monkeypatch, agent, ckpt, out):
+    monkeypatch.delenv("VIBE_REC_DIR", raising=False)
+    ctx = ("T", play.PlayConfig(agent="trained", checkpoint_file=ckpt), agent)
+    monkeypatch.setattr(play, "_vibe_play_ctx", ctx, raising=False)
+    assert str(session.resolve_out_root()[0]) == out
 
 
 def test_cache_is_vibes(tmp_path, monkeypatch):

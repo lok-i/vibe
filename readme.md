@@ -70,11 +70,11 @@ vibe task differs from its privileged twin env in [orcs](https://github.com/lok-
 
 ### recording clips
 
-rides `play --viewer viser`. `VIBE_REC=1` spawns paused, so the shot is set before a step.
+rides `play --viewer viser`. `VIBE_PAUSED=1` spawns paused, so the shot is set before a step.
 
 ```bash
 # set the prefered recodinrg cfg via director
-VIBE_REC=1 play Vibe-Uolm-ImgFeat-Ext --viewer viser --agent initial --num-envs 5
+VIBE_PAUSED=1 play Vibe-Uolm-ImgFeat-Ext --viewer viser --agent initial --num-envs 5
 # post recording:
 # stitch, no editor
 printf "file '%s'\n" episode_0{0,3,7}.mp4 > list.txt      
