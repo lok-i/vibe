@@ -34,13 +34,13 @@ ONNX tooling is deliberately absent from the training install. Install the
 optional deploy dependencies only on machines that export or execute graphs:
 
 ```bash
-pip install -e ".[deploy]"
+bash scripts/setup/sync_deps.sh --deploy   # never `pip install -e .[deploy]`: it swaps out the rsl_rl fork
 ```
 
 ```bash
-export-agent Vibe-Repose-BigCubeFloor-ImgFeat-Sfd --wandb-run-path vbp/repose/swp7ha7b
+export-agent <task-id> --release                         # the released checkpoint -> exports/agent/<task-id>/
+export-agent <task-id> --checkpoint-file <ckpt.pt>
 export-agent <task-id> --wandb-run-path <e/p/run> --viewer native
-export-agent <task-id> --checkpoint-file logs/rsl_rl/<exp>/<run>/model_20000.pt
 ```
 
 Writes `<ckpt>.onnx` + `<ckpt>.manifest.json` next to the checkpoint (`--output-dir` to move

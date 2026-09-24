@@ -109,9 +109,9 @@ The deploy path for the C++ ROS2 side — the exporter owns all model knowledge,
 deploy node executes a self-describing artifact.
 
 ```bash
-export-agent   <task-id>            # policy graph      (vibe.onnx.v1)
-export-agent   <task-id> --check    # re-run the export episode, two-world diff
-export-encoder                      # frozen backbone   (vision.onnx.v1)
+bash scripts/setup/sync_deps.sh --deploy   # + onnxruntime, fork-safe
+export-agent   <task-id> --release         # policy graph (vibe.onnx.v1) + two-world check
+export-encoder                             # frozen backbone (vision.onnx.v1)
 ```
 
 ## vram (mesh-object tasks)

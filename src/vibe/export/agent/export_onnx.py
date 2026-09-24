@@ -22,9 +22,11 @@ Artifacts are written only if the open-loop gate passes. `--viewer` then replays
 `DualPolicy` object so what you watch is bit-identical to what was verified.
 
 Usage:
-    export-agent Vibe-Repose-BigCubeFloor-ImgFeat-Sfd --wandb-run-path vbp/repose/swp7ha7b
+    export-agent <task-id> --release                      # the lkrajan/vibe checkpoint
+    export-agent <task-id> --checkpoint-file <ckpt.pt>
     export-agent <task-id> --wandb-run-path <e/p/run> --viewer native
-    export-agent <task-id> --checkpoint-file logs/rsl_rl/<exp>/<run>/model_20000.pt
+
+The two-world test needs onnxruntime: `bash scripts/setup/sync_deps.sh --deploy`.
 """
 
 from __future__ import annotations
@@ -49,7 +51,6 @@ from mjlab.utils.torch import configure_torch_backends
 
 import vibe  # noqa: F401 — task registration
 from vibe.export.agent import case as export_case
-from vibe.export.agent.onnx_agent import DualPolicy, OnnxAgent, WorldStats
 from vibe.export.manifest import build_manifest, duplicate_group_aliases
 
 _TORCH_WORLD, _ONNX_WORLD = 0, 1
@@ -60,14 +61,17 @@ _NUM_ENVS = 2
 class ExportConfig:
     """CLI for the ONNX exporter (checkpoint resolution mirrors `play`)."""
 
+    release: bool = False
+    """Export the released checkpoint (`play --agent release`'s), fetched on first use."""
     wandb_run_path: str | None = None
-    """W&B run holding the checkpoint, e.g. 'vbp/repose/swp7ha7b'."""
+    """W&B run holding the checkpoint, e.g. '<entity>/<project>/<run>'."""
     wandb_checkpoint_name: str | None = None
     """Checkpoint within the run (default: latest)."""
     checkpoint_file: str | None = None
     """Local checkpoint, bypassing W&B."""
     output_dir: str | None = None
-    """Where to write <name>.onnx / <name>.manifest.json (default: the checkpoint's folder)."""
+    """Where to write <name>.onnx / <name>.manifest.json (default: the checkpoint's folder;
+    `exports/agent/<task-id>/` for `--release`, never the download cache)."""
     check: bool = True
     """Run the two-world test; artifacts are written only if the open-loop gate passes."""
     tolerance: float = 1e-5
@@ -91,15 +95,44 @@ class ExportConfig:
     log_root: str = "logs/rsl_rl"
 
 
-def _resolve_checkpoint(cfg: ExportConfig, experiment_name: str) -> Path:
-    """Resolve a local or W&B checkpoint path (same rules as `play`)."""
+def _onnx_agent():
+    """`vibe.export.agent.onnx_agent`, which needs onnxruntime — only the check/viewer do."""
+    try:
+        from vibe.export.agent import onnx_agent
+    except ModuleNotFoundError as exc:
+        if exc.name != "onnxruntime":
+            raise
+        raise SystemExit("[export] onnxruntime missing: `bash scripts/setup/sync_deps.sh "
+                         "--deploy` (never `pip install -e .[deploy]` — it swaps out the "
+                         "rsl_rl fork). `--no-check` exports without it.") from exc
+    return onnx_agent
+
+
+def _released(task_id: str) -> Path:
+    """The released checkpoint, routed by manifest exactly as `play --agent release` is."""
+    from vibe import release
+
+    if task_id in release.released_model_ids():
+        return release.ensure_released_model(task_id)
+    from orcs import release as orcs_release
+
+    return orcs_release.ensure_released_model(task_id)
+
+
+def _resolve_checkpoint(cfg: ExportConfig, task_id: str, experiment_name: str) -> Path:
+    """Resolve a released, local or W&B checkpoint path (same rules as `play`)."""
+    if cfg.release:
+        if cfg.checkpoint_file or cfg.wandb_run_path:
+            raise ValueError("--release cannot be combined with --checkpoint-file / "
+                             "--wandb-run-path")
+        return _released(task_id)
     if cfg.checkpoint_file is not None:
         path = Path(cfg.checkpoint_file)
         if not path.exists():
             raise FileNotFoundError(f"Checkpoint file not found: {path}")
         return path
     if cfg.wandb_run_path is None:
-        raise ValueError("`wandb_run_path` is required when `checkpoint_file` is not provided.")
+        raise ValueError("name a checkpoint: --release | --checkpoint-file | --wandb-run-path")
     log_root = (Path(cfg.log_root) / experiment_name).resolve()
     path, cached = get_wandb_checkpoint_path(
         log_root, Path(cfg.wandb_run_path), cfg.wandb_checkpoint_name
@@ -124,9 +157,9 @@ def _resolve_case(task_id: str) -> export_case.ExportCase:
     return case
 
 
-def _two_world_rollout(env, policy: DualPolicy, steps: int, tolerance: float) -> WorldStats:
+def _two_world_rollout(env, policy, steps: int, tolerance: float):
     """Step both worlds under one policy, gating world 0's open-loop numerics as we go."""
-    stats = WorldStats((_TORCH_WORLD, _ONNX_WORLD))
+    stats = _onnx_agent().WorldStats((_TORCH_WORLD, _ONNX_WORLD))
     obs = env.get_observations()
     with torch.no_grad():
         for step in range(steps):
@@ -144,6 +177,8 @@ def _two_world_rollout(env, policy: DualPolicy, steps: int, tolerance: float) ->
 
 def run_export(task_id: str, cfg: ExportConfig) -> None:
     """Build the env, load the checkpoint, export, verify in two worlds, write the artifacts."""
+    if cfg.check or cfg.viewer != "none":
+        _onnx_agent()  # fail before the env build, not after an artifact is written
     configure_torch_backends()
     device = cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -161,8 +196,10 @@ def run_export(task_id: str, cfg: ExportConfig) -> None:
     print(f"[export] case: seed {seed}, {steps} steps, "
           f"episode {pinned or 'unpinned (dataset already deterministic)'}")
 
-    checkpoint = _resolve_checkpoint(cfg, agent_cfg.experiment_name)
-    out_dir = Path(cfg.output_dir) if cfg.output_dir else checkpoint.parent
+    checkpoint = _resolve_checkpoint(cfg, task_id, agent_cfg.experiment_name)
+    out_dir = (Path(cfg.output_dir) if cfg.output_dir
+               else Path("exports/agent") / task_id if cfg.release
+               else checkpoint.parent)
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = checkpoint.stem
 
@@ -223,11 +260,12 @@ def run_export(task_id: str, cfg: ExportConfig) -> None:
     # --- two-world test, then keep or delete ---
     policy = None
     if cfg.check or cfg.viewer != "none":
-        agent = OnnxAgent(onnx_path, provider=cfg.provider)
-        gate_agent = agent if agent.providers == ["CPUExecutionProvider"] else OnnxAgent(
+        oa = _onnx_agent()
+        agent = oa.OnnxAgent(onnx_path, provider=cfg.provider)
+        gate_agent = agent if agent.providers == ["CPUExecutionProvider"] else oa.OnnxAgent(
             onnx_path, provider="cpu")
         print(f"[export] onnxruntime providers: {agent.providers}")
-        policy = DualPolicy(
+        policy = oa.DualPolicy(
             model, agent, gate_agent=gate_agent,
             reference_model=copy.deepcopy(model).to("cpu").eval(),
         )
@@ -262,7 +300,7 @@ def run_export(task_id: str, cfg: ExportConfig) -> None:
     env.close()
 
 
-def _launch_viewer(env, policy: DualPolicy, backend: str) -> None:
+def _launch_viewer(env, policy, backend: str) -> None:
     """Watch world 0 (checkpoint) and world 1 (exported ONNX) side by side."""
     from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
 

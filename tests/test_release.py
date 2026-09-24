@@ -5,7 +5,9 @@
   2. `play --agent` offers orcs's choices UNION vibe's — the play patch stacks on
      orcs's, and a respelled Literal once dropped `release` for every task;
   3. `--agent release` ROUTES by manifest: a vibe task to vibe's, anything else to
-     orcs's handler, and a named checkpoint beside it is refused.
+     orcs's handler, and a named checkpoint beside it is refused;
+  4. `export-agent --release` routes the same way, and the exporter imports
+     without onnxruntime (only its check/viewer need it).
 
 The downloader itself (verified, atomic, cached) is orcs's and tested there; here,
 only that vibe's cache is vibe's. No network, no checkpoint.
@@ -14,8 +16,10 @@ only that vibe's cache is vibe's. No network, no checkpoint.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import io
 import json
+import sys
 from typing import get_args, get_type_hints
 
 import mjlab.scripts.play as play
@@ -95,3 +99,37 @@ def test_cache_is_vibes(tmp_path, monkeypatch):
     path = release.ensure_released_model("Vibe-Test")
     assert path == tmp_path / "test" / "Vibe-Test" / "checkpoint.pt"
     assert path.read_bytes() == payload
+
+
+def _exporter(monkeypatch):
+    """A fresh import of the exporter with onnxruntime unimportable."""
+    monkeypatch.setitem(sys.modules, "onnxruntime", None)
+    for name in ("vibe.export.agent.export_onnx", "vibe.export.agent.onnx_agent"):
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    return importlib.import_module("vibe.export.agent.export_onnx")
+
+
+def test_exporter_imports_without_onnxruntime(monkeypatch):
+    ex = _exporter(monkeypatch)
+    with pytest.raises(SystemExit, match="sync_deps.sh --deploy"):
+        ex._onnx_agent()
+
+
+@pytest.mark.parametrize("task_id, owner", [
+    ("Vibe-Dodge-ImgFeat-Ext", "vibe"),
+    ("Orcs-Dodge-AdaptSonic", "orcs"),
+])
+def test_export_release_routes_by_manifest(monkeypatch, task_id, owner):
+    ex = _exporter(monkeypatch)
+    monkeypatch.setattr(release, "ensure_released_model", _raise("vibe"))
+    monkeypatch.setattr(orcs.release, "ensure_released_model", _raise("orcs"))
+    with pytest.raises(_Routed) as exc:
+        ex._resolve_checkpoint(ex.ExportConfig(release=True), task_id, "exp")
+    assert exc.value.args == (owner, task_id)
+
+
+def test_export_release_refuses_a_named_checkpoint(monkeypatch):
+    ex = _exporter(monkeypatch)
+    cfg = ex.ExportConfig(release=True, checkpoint_file="x.pt")
+    with pytest.raises(ValueError, match="--release cannot be combined"):
+        ex._resolve_checkpoint(cfg, "Vibe-Dodge-ImgFeat-Ext", "exp")
