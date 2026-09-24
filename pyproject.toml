@@ -1,0 +1,84 @@
+[project]
+name = "vibe"
+version = "0.1.0"
+description = "Visual Behavior adaptation — vision-only whole-body control for humanoids"
+readme = "readme.md"
+# 3.11, not 3.10: vibe hard-imports orcs, and orcs needs `tomllib` from stdlib.
+requires-python = ">=3.11"
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "Lokesh Krishna", email = "lkrajan@usc.edu" }]
+dependencies = [
+    # ── active ─────────────────────────────────────────────────────────────────
+    # The validated simulator stack, pinned exactly and in lockstep with orcs.
+    # mjlab pins rsl-rl-lib with `==`, so a floor here resolves a newer mjlab that
+    # rips out the rsl_rl fork; and 1.6 renders the skybox into sensor cameras,
+    # which moves the head cam's input distribution out from under every trained
+    # vision checkpoint. Bump only together with orcs — see docs/infra/deps.md.
+    "mjlab==1.4.0",
+    "mujoco==3.8.1",
+    "mujoco-warp==3.8.1",
+    "warp-lang==1.13.0",
+    # Capped, not just floored: rsl_rl's WandbLogWriter passes the legacy
+    # `Settings(start_method=...)`, which 0.29 turned from a deprecation warning
+    # into a hard pydantic `extra_forbidden`. mjlab asks only for >=0.22.3, so a
+    # fresh env resolves to a broken wandb and `train` dies before iteration 0 —
+    # on the default logger, which is wandb. 0.28.0 is the last good release.
+    "wandb>=0.22.3,<0.29",
+    "einops",
+    "omegaconf",
+    "transformers==4.57.6",   # frozen vision backbones (vibe.encoders.zoo)
+    # NB: numpy/torch are guaranteed by mjlab; mocke + rsl_rl + orcs are git deps
+    # owned by deps.lock, never listed here.
+
+    # ── variants (uncomment and adapt) ─────────────────────────────────────────
+    # 1.  PyPI, latest compatible          "wandb>=0.17"
+    # 2.  PyPI, exact pin                  "numpy==1.26.4"
+    # 3.  PyPI, version range              "torch>=2.1.0,<2.4.0"
+    # 4.  PyPI, no constraint              "tqdm"
+    # 5.  Git, HEAD (not reproducible)     "pkg @ git+https://github.com/org/pkg.git"
+    # 6.  Git, commit SHA  ← preferred     "pkg @ git+https://github.com/org/pkg.git@a1b2c3d"
+    # 7.  Git, tag                         "pkg @ git+https://github.com/org/pkg.git@v1.4.0"
+    # 8.  Git, branch (moving target)      "pkg @ git+https://github.com/org/pkg.git@my-branch"
+    # 9.  Local editable sibling repo      "pkg"  +  pip install -e /path/to/pkg  (separately)
+    # 10. Embedded vendor copy             "pkg @ file:///${PWD}/vendor/pkg"
+    # note: variants 5-10 won't upload to PyPI — fine for research repos
+]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"vibe.export.encoder" = ["*.yaml"]
+
+# mjlab auto-discovers tasks by importing this module at startup.
+# Format: <key> = "<python-module-to-import>"  (key is arbitrary, module is what gets imported)
+# Adding a package here triggers its __init__.py -> register_mjlab_task() calls.
+# Multi-package: add one line per package that registers tasks.
+[project.entry-points."mjlab.tasks"]
+vibe = "vibe"
+
+[project.scripts]
+export-agent = "vibe.export.agent.export_onnx:main"
+export-encoder = "vibe.export.encoder.export_onnx:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+deploy = ["onnx", "onnxruntime"]
+
+# `dependencies/` holds editable checkouts of orcs/mocke/rsl_rl/assets, each with
+# its own suite. A bare `pytest` from the root would collect those too: they need
+# extras vibe does not install (onnxruntime), and their basenames collide.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["dependencies", "data", ".venv"]
+
+[tool.ruff]
+src = ["src"]
+indent-width = 4
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]

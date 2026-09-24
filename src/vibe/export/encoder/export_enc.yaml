@@ -1,0 +1,16 @@
+# export-encoder config — THE single source of truth for encoder artifacts.
+# Swap fields here (notably compute_dtype), never in code.
+
+height: 63            # native head-cam res: must match training (no resize in sim)
+width: 112
+compute_dtype: fp32   # fp32 | fp16 — recorded in every manifest; fp16 gate needs
+                      #   a looser tolerance (ORT CPU casts fp16 ops through fp32)
+device: cpu           # export + gate device; cpu = deterministic reference
+opset: 18
+tolerance: 1.0e-4     # parity gate: max|torch - ORT| over random frames
+gate_frames: 8
+
+# mandatory roster (mobileclip2 dropped: conv trunk, not worth the trace fight)
+tags: [theia-tiny, siglip2-b16, dinov2-s, dinov3-splus, tinyclip-39m, clip-b32]
+
+out: exports/enc      # <tag>.onnx + <tag>.manifest.json land here

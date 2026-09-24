@@ -1,0 +1,7 @@
+VIBE — Visual Behavior adaptation
+Copyright 2026 Lokesh Krishna <lkrajan@usc.edu>
+
+VIBE's original code and documentation are licensed under BSD-3-Clause.
+Externally obtained models, datasets, and pretrained weights are not
+relicensed by VIBE. Their attribution and terms are recorded in
+THIRD_PARTY_NOTICES.md.

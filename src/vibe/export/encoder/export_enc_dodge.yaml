@@ -1,0 +1,22 @@
+# Dodge-only encoder export — the shared export_enc.yaml stays at height 63.
+#
+# Vibe-Dodge-ConeFast trains the head cam at 64 px, not the shared 63
+# (`vibe/tasks/dodge/config/g1/env_cfgs.py`: `camera_height=64`), so the token
+# grid is 4x7 = 28 instead of 3x7 = 21. Resolution is frozen into the graph at
+# trace time — the declared input dim AND the position-embedding resize target —
+# so a second export is the only way to serve it.
+#
+# Exports under the ROSTER tag `theia-tiny`; rename to `theia-tiny-h64` on
+# landing so it sits beside the 21-token artifact the other tasks bind.
+
+height: 64            # the one departure from export_enc.yaml
+width: 112
+compute_dtype: fp32
+device: cpu
+opset: 18
+tolerance: 1.0e-4
+gate_frames: 8
+
+tags: [theia-tiny]
+
+out: exports/enc_dodge

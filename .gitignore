@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+wandb/
+logs/
+videos/
+*.onnx
+*.npz
+# Synced custom deps + data (managed by scripts/setup/sync_{deps,data}.sh)
+/data/
+/dependencies/
+# Editor / agent settings — device-specific, never tracked
+.claude/
+.vscode/
+
+# encoder ONNX exports (export-encoder)
+/exports/
