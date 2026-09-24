@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sync the CODE: a uv venv, vibe itself, and every deps.lock row under dependencies/.
 #
-#   1. the venv — the active one, else ./.venv (created: `uv venv --python 3.11`)
+#   1. the venv — the active one, else ./.venv (created at `.python-version`)
 #   2. `uv pip install -e .[dev]` — vibe FIRST: mjlab pins rsl-rl-lib==5.2.0 off PyPI,
 #      so the fork below must be the last install, every run
 #   3. per row: shallow-fetch the pinned SHA, `uv pip install -e` it

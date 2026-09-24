@@ -25,9 +25,8 @@ from orcs.core.rl import NUM_STEPS_PER_ENV
 # The runner spine + the extractor swap are `vibe.core.rl` — shared with every
 # vibe task that reads a camera. What stays here is repose's: the CNN row and
 # the aux objectives (a target set is task-specific).
-from vibe.core.rl import VibeRunnerCfg, attach_extractor  # noqa: F401
 from vibe.core.rl import adapt_sonic_agent_cfg as _adapt_sonic
-from vibe.core.rl import runner as _runner  # noqa: F401
+from vibe.core.rl import attach_extractor
 from vibe.tasks.repose.config.g1 import observation_cfgs
 
 # ---------------------------------------------------------------------------

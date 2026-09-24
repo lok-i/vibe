@@ -23,8 +23,6 @@ __all__ = [
     "face_tilt_error",
     "all_face_tilts",
     "color_tilt_error",
-    "slot_labels",
-    "seat_angle",
 ]
 
 @functools.lru_cache(maxsize=None)
@@ -92,34 +90,5 @@ def color_tilt_error(
     if perm is None:
         return face_tilt_error(quat, color_idx)
     tilts = all_face_tilts(quat)
-    matched = torch.where(
-        perm == color_idx.unsqueeze(1), 
-        tilts, 
-        torch.full_like(tilts, torch.pi)
-        )
+    matched = torch.where(perm == color_idx.unsqueeze(1), tilts, torch.full_like(tilts, torch.pi))
     return matched.min(dim=1).values
-
-
-def _bearing_frame(obj_pos: torch.Tensor, root_pos: torch.Tensor) -> torch.Tensor:
-    """(N, 3, 3) rows = the horizontal-to-robot, left, up world directions."""
-    h = root_pos[..., :2] - obj_pos[..., :2]
-    h = torch.nn.functional.normalize(
-        torch.cat([h, torch.zeros_like(h[..., :1])], -1), dim=-1)
-    z = torch.zeros_like(h)
-    z[..., 2] = 1.0
-    return torch.stack([h, torch.cross(z, h, dim=-1), z], dim=-2)
-
-
-def slot_labels(R_obj: torch.Tensor, obj_pos: torch.Tensor,
-                root_pos: torch.Tensor) -> torch.Tensor:
-    """face -> slot {U D F B L R} relative to the robot -> (N, 6) long."""
-    n_w = torch.einsum("nab,kb->nka", R_obj, face_normals(R_obj.device))  # (N,6,3)
-    h, lft, z = _bearing_frame(obj_pos, root_pos).unbind(-2)
-    ref = torch.stack([z, -z, h, -h, lft, -lft], dim=1)                  # (N,6,3)
-    return torch.einsum("nka,nsa->nks", n_w, ref).argmax(-1)
-
-
-def seat_angle(R_obj: torch.Tensor) -> torch.Tensor:
-    """Angle between the most-up face normal and world-up -> (N,) rad."""
-    cos = (R_obj[..., 2, :] @ face_normals(R_obj.device).T).max(-1).values
-    return torch.acos(cos.clamp(-1.0, 1.0))

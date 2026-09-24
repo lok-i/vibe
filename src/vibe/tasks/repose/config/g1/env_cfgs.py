@@ -96,26 +96,15 @@ def _max_clip_len_steps(dataset_dir: str | list[str]) -> int:
 
 
 def _load_exclude_motions(path: str) -> tuple[str, ...]:
-    """Exclusion list from .json (list[str]) or .csv (motion_name column, else
-    first column). Entries: "<motion>" (whole folder) or "<motion>/<sampleX>".
+    """Exclusion list, a .json list[str] of "<motion>" or "<motion>/<sampleX>".
     Relative paths resolve against the repo root."""
+    import json
     from pathlib import Path
 
     p = Path(path)
     if not p.is_absolute():
         p = paths.VIBE_ROOT / p
-    if p.suffix == ".json":
-        import json
-        entries = json.loads(p.read_text())
-    elif p.suffix == ".csv":
-        import csv
-        with open(p, newline="") as fh:
-            rows = list(csv.DictReader(fh))
-        key = "motion_name" if rows and "motion_name" in rows[0] else None
-        entries = ([r[key] for r in rows] if key
-                   else [r for r, *_ in csv.reader(open(p))][1:])
-    else:
-        raise ValueError(f"exclude_motions_file must be .json or .csv: {p}")
+    entries = json.loads(p.read_text())
     assert all(isinstance(e, str) for e in entries), f"non-string entry in {p}"
     return tuple(dict.fromkeys(entries))  # dedupe, order-preserving
 
@@ -224,9 +213,8 @@ def g1_repose_cube_env_cfg(
                  contract, docs/infra/agents.md §3).
         play:    Play-mode overrides (no noise, no anneal, relaxed terminations).
         dataset_dir: Multi-clip dataset root(s) (default: the repose cube clips).
-        exclude_motions_file: .json/.csv clip exclusion list (see
-                 _load_exclude_motions) — e.g. the W0 kill list of unlearnable
-                 clips; entries are "<motion>" or "<motion>/<sampleX>".
+        exclude_motions_file: .json clip exclusion list (`_load_exclude_motions`),
+                 e.g. the unlearnable-clip list the tasks register with.
         num_steps_per_env: PPO rollout length (for PolicyUpdateCounter).
     """
     if aux:
@@ -246,7 +234,6 @@ def g1_repose_cube_env_cfg(
         sensors.GROUND_CONTACT_SENSOR_NAME)
 
     ds = dataset_dir or _G1_REPOSE_DATASETS[scene]
-    obj = SceneEntityCfg("object")  # noqa: F841 — VOF params below (commented)
     _p = {"command_name": "motion"}
 
     # ── the motion command (the base cfg ships none) ──
@@ -299,15 +286,8 @@ def g1_repose_cube_env_cfg(
         is_global_time=True,
         params={"num_steps_per_env": num_steps_per_env},
     )
-    # VOF (decaying PD wrench toward the demo ref) is available from orcs but
-    # deliberately NOT wired here — repose's cube is light enough that the
-    # curriculum never paid for itself. Re-enable by uncommenting:
-    # cfg.events["virtual_object_force"] = EventTermCfg(
-    #     func=mdp.VirtualObjectForceCurriculum, mode="interval",
-    #     interval_range_s=(0.0, 0.0),
-    #     params={"natural_frequency": 12.0, "terminal_scale": 1e-4,
-    #             "decay_mode": "exponential", "decay_by_policy_iterations": 10_000,
-    #             "object_cfg": obj, **_p})
+    # No VOF (orcs's decaying PD wrench toward the demo): the cube is light enough
+    # that the curriculum never paid for itself.
 
     # ── robot-motion rewards: track the demo trajectories ──
     # The task layer comes from the base dict (object_goal + success_bonus +

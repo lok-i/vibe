@@ -14,7 +14,6 @@ from mjlab.managers.scene_entity_config import SceneEntityCfg
 from vibe.tasks.repose.mdp.cube_faces import (
     color_tilt_error,
     face_tilt_error,
-    up_face_idx,
 )
 
 __all__ = [
@@ -26,12 +25,8 @@ __all__ = [
 
 
 def _goal_face_idx(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-    """Goal up-face index: precomputed on ReposeMotionCommand, else snapped
-    from the goal quat (ReorientationCommand)."""
-    term = env.command_manager.get_term(command_name)
-    if hasattr(term, "goal_up_face_idx"):
-        return term.goal_up_face_idx
-    return up_face_idx(term.command)
+    """Goal up-face index, precomputed on ReposeMotionCommand."""
+    return env.command_manager.get_term(command_name).goal_up_face_idx
 
 
 def _tilt(env: ManagerBasedRlEnv, object_cfg: SceneEntityCfg,

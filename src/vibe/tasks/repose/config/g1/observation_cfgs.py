@@ -72,8 +72,6 @@ __all__ = [
 # other half (q_cls belongs to a CLIP-family CLS only). Swap them as a pair or
 # the extractor spends an attention row on an untrained token.
 
-# DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_motion_cmd", "q_proprio")
-# DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_motion_cmd", "q_proprio", CLS_GROUP)
 DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_proprio", CLS_GROUP)
 
 
@@ -155,7 +153,6 @@ def vision_augmentation_group(c: ObsCtx, *, feat: bool = True) -> ObservationGro
     """
     return _grp({
         **({"feat": img_flat_term(c.sensor, c.model, c.model_dtype)} if feat else {}),
-        # "base_lin_vel": _T(mdp.base_lin_vel),  #NOTE (lok-i) 1Aug2026: found insensitive
         **object_goal_terms(c.p),
         **robot_motion_cmd_terms(c.p),
     })

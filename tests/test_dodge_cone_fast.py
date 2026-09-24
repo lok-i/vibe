@@ -27,9 +27,6 @@ def test_cone_fast_matches_the_trained_environment_contract():
         **DODGE_CONE_FAST_THROW,
     }
     assert (_head_cam(cfg).width, _head_cam(cfg).height) == (112, 64)
-    assert cfg.observations["kv_tokens"].terms["img_tokens"].params[
-        "delay_steps"
-    ] == 0
     assert cfg.scene.terrain.terrain_generator.size == ROOM_SIZE
     assert tuple(light.name for light in cfg.scene.terrain.lights[1:]) == (
         ROOM_LIGHT_NAMES

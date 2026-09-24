@@ -11,9 +11,8 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 
 from vibe.core import sensors as core_sensors
 
-__all__ = ["DODGE_CAM_PITCH_DOWN_DEG", "DODGE_CAM_QUAT", "attach_dodge_cam"]
+__all__ = ["DODGE_CAM_QUAT", "attach_dodge_cam"]
 
-DODGE_CAM_PITCH_DOWN_DEG = -2.0  # negative = UP
 DODGE_CAM_QUAT = (0.491198, 0.508650, -0.508650, -0.491198)
 """Head camera pitched 2 deg UP, against the shared default's 45 DOWN.
 

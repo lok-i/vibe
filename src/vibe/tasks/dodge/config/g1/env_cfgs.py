@@ -46,7 +46,6 @@ from vibe.core.env_cfgs import (
     flat_floor,
 )
 from vibe.core.mdp.metrics import object_in_fov
-from vibe.core.observation_cfgs import TOKEN_GROUP
 from vibe.core.sensors import HEAD_CAM_NAME
 from vibe.tasks.dodge.config.g1 import observation_cfgs as oc
 from vibe.tasks.dodge.config.g1.sensors import attach_dodge_cam
@@ -162,16 +161,10 @@ def g1_dodge_env_cfg(
 def g1_dodge_cone_fast_env_cfg(
     *, play: bool = False, **orcs_kw
 ) -> ManagerBasedRlEnvCfg:
-    """The exact single-frame ConeFast environment used by ``na75lk4d``."""
-    cfg = g1_dodge_env_cfg(
+    """Dodge in the indoor room: faster throws, farther releases, a 64-px camera."""
+    return g1_dodge_env_cfg(
         room=True,
         camera_height=64,
         play=play,
         **(DODGE_CONE_FAST_THROW | orcs_kw),
     )
-    # The source run serialized this explicit zero after history support landed.
-    # It remains a single-frame no-op here; the current image term accepts extra
-    # params via ``**_kw`` and allocates no history buffer.
-    tokens = cfg.observations[TOKEN_GROUP].terms["img_tokens"]
-    tokens.params = {**tokens.params, "delay_steps": 0}
-    return cfg
