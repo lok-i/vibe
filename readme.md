@@ -1,6 +1,12 @@
 # vibe
 
-**Vi**sual **Be**havior adaptation for perceptive humanoid control.
+[![arXiv](https://img.shields.io/badge/arXiv-2609.09918-red)](https://arxiv.org/abs/2609.09918)
+[![Project](https://img.shields.io/badge/Project-Page-brightgreen)](https://lok-i.github.io/vibe-control/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-vibe-blue)](https://lok-i.github.io/vibe-control/#demo)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Model-yellow)](https://huggingface.co/lkrajan/vibe)
+[![License](https://img.shields.io/badge/License-BSD--3-blue)](LICENSE)
+
+implementation accompanying *ViBe: **Vi**sual **Be**havior Adaptation for Perceptive Humanoid Whole-Body Control*.
 
 ## install
 
