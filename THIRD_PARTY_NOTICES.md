@@ -19,11 +19,19 @@ this repository or in its Python distribution. The roster lives in
 | `siglip2-b16` | `google/siglip2-base-patch16-224` | [SigLIP 2](https://github.com/google-research/big_vision), Google |
 | `dinov2-s` | `facebook/dinov2-small` | [DINOv2](https://github.com/facebookresearch/dinov2), Meta |
 | `dinov3-splus` | `facebook/dinov3-vits16plus-pretrain-lvd1689m` | [DINOv3](https://github.com/facebookresearch/dinov3), Meta — **HF-gated**, accept the license once with your HF token |
-| `mobileclip2-s2` | `MobileCLIP2-S2:dfndr2b` (open_clip registry) | [MobileCLIP2](https://github.com/apple/ml-mobileclip), Apple |
 
 Each carries its own license on its model card. Users are responsible for
 accepting those terms and for complying with them; a citation or an
 acknowledgement does not replace a license.
+
+## Released checkpoints
+
+The policies at [`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), fetched by
+`play --agent release` and `export-agent --release`, embed the frozen
+[SONIC](https://github.com/NVlabs/GR00T-WholeBodyControl) base weights. They are
+distributed under the NVIDIA Open Model License, not BSD-3-Clause; the model card
+and its `LICENSES/` carry the terms. They are downloaded at runtime and not
+bundled here.
 
 ## External dependencies and data
 

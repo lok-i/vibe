@@ -13,7 +13,7 @@ dependencies = [
     # mjlab pins rsl-rl-lib with `==`, so a floor here resolves a newer mjlab that
     # rips out the rsl_rl fork; and 1.6 renders the skybox into sensor cameras,
     # which moves the head cam's input distribution out from under every trained
-    # vision checkpoint. Bump only together with orcs — see docs/infra/deps.md.
+    # vision checkpoint. Bump only together with orcs — see docs/setup.md.
     "mjlab==1.4.0",
     "mujoco==3.8.1",
     "mujoco-warp==3.8.1",

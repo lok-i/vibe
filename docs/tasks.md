@@ -1,0 +1,38 @@
+# tasks
+
+```
+Vibe-<Task>[-<Source|Scene>]-<Extero>[-<Suffix>]
+```
+
+Every task adapts the frozen SONIC base, so the base is not a token. A slot with only one
+value is dropped. `list-envs` prints the registered ids, including the `Orcs-*` / `Mocke-*`
+ids the dependencies register.
+
+| slot | token | meaning |
+|---|---|---|
+| Task | `Repose` | reorient a 6-colour cube until the commanded colour faces up |
+| | `PerLoco` | perceptive locomotion over staged terrain |
+| | `Uolm` | uni-object loco-manipulation over a six-object roster |
+| | `Dodge` | evade a thrown ball; the reference is a still stand, so all evasion comes from the adapter |
+| Source (PerLoco) | `Grail` · `OmRe` | GRAIL curbs · OmniRetarget climbs |
+| Scene (Repose) | `BigCubeFloor` · `SmallCubeTable` | 0.61 m cube on the floor · 0.36 m cube onto a per-clip table |
+| Scene (Dodge) | `ConeFast` | indoor room, faster throws from farther out, 64-px camera |
+| Extero | `ObjKin` | privileged object state: the twin row (Repose only; orcs registers the others) |
+| | `ImgFeat` | frozen-encoder features from the head camera |
+| | `ImgRgb` | raw RGB into a trainable CNN: the vision-stack baseline |
+| Suffix | *(none)* | features go straight into the adapter, no extractor |
+| | `Ext` | cross-attention extractor → z, trained by PPO alone |
+| | `Sfd` | + supervised forward-dynamics aux loss |
+| | `Lfd` | + latent forward-dynamics aux loss, against an EMA target |
+
+## per-run flags
+
+A knob varied between runs of one task is a flag, not a token. Both are recorded in the run cfg.
+
+| flag | varies | default |
+|---|---|---|
+| `--env.img-encoder <hf-id>` | the frozen backbone, rebinding both image terms at once | Theia-tiny |
+| `--agent.drop-query-rows q_proprio` | which extractor attention rows exist (z stays 128-d) | none dropped |
+
+Each task's rationale (LoRA rank, query rows, what its twin controls for) is in its
+registration docstring: `src/vibe/tasks/<family>/config/g1/__init__.py`.
