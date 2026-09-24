@@ -22,7 +22,7 @@ Idempotent, import-time. ``import vibe`` runs before either script's ``run_*``, 
 from __future__ import annotations
 
 import importlib
-from typing import Literal
+from typing import Literal, get_args, get_type_hints
 
 import orcs
 from mjlab.tasks.tracking.mdp.commands import MotionCommandCfg
@@ -316,7 +316,7 @@ def _muffle_mesh_support_warning() -> None:
 
 
 def _patch_play_init_agent() -> None:
-    """Add ``--agent initial`` to mjlab's play script (no core edits, no fork).
+    """Add ``--agent {auto,initial,release}`` to mjlab's play script (no core edits, no fork).
 
     "initial" = instantiate the task's ACTUAL agent (actor cfg, base_checkpoint
     and all) but load NO training checkpoint — the freshly constructed policy
@@ -329,9 +329,15 @@ def _patch_play_init_agent() -> None:
     globals at call time, so swapping both on the module is enough. tyro
     picks up the widened Literal; video/ckpt-hotswap are trained-only and
     stay untouched.
+
+    This patch STACKS on orcs's (orcs patches at its import, vibe last), so the
+    choices are the parent's UNION vibe's, never respelled: a hand-written Literal
+    silently dropped orcs's ``release`` and broke ``play Orcs-* --agent release``
+    in a vibe env. "release" routes by manifest — a task in vibe's ``release.json``
+    resolves here, any other falls through to orcs's handler.
     """
     import dataclasses
-    from dataclasses import asdict, dataclass
+    from dataclasses import asdict, field, make_dataclass
 
     import torch
 
@@ -347,20 +353,33 @@ def _patch_play_init_agent() -> None:
     # rolls out an untrained policy.
     _CKPT_SOURCES = ("wandb_run_path", "registry_name", "checkpoint_file")
 
-    @dataclass(frozen=True)
-    class PlayConfig(_OrigPlayConfig):  # type: ignore[misc, valid-type]
-        # DEFAULT since 2026-08-06, against mjlab's "trained": **auto**, not
-        # `initial`. Bare `play <task>` is a look-at-the-scene command — a camera
-        # aim, a floor colour, an obs shape — and every one of those wants the
-        # real model stack with no checkpoint hunt. But `--wandb-run-path <p>`
-        # with no `--agent` is unambiguously "play THESE weights", and a fixed
-        # `initial` default would ignore them and roll out an untrained policy
-        # that still moves — the failure would look like a bad checkpoint.
-        # So the default is inferred from whether a checkpoint was named, and
-        # the resolution is always printed. An explicit `--agent` still wins.
-        agent: Literal["auto", "zero", "random", "trained", "initial"] = "auto"
+    # DEFAULT since 2026-08-06, against mjlab's "trained": **auto**, not
+    # `initial`. Bare `play <task>` is a look-at-the-scene command — a camera
+    # aim, a floor colour, an obs shape — and every one of those wants the
+    # real model stack with no checkpoint hunt. But `--wandb-run-path <p>`
+    # with no `--agent` is unambiguously "play THESE weights", and a fixed
+    # `initial` default would ignore them and roll out an untrained policy
+    # that still moves — the failure would look like a bad checkpoint.
+    # So the default is inferred from whether a checkpoint was named, and
+    # the resolution is always printed. An explicit `--agent` still wins.
+    # Choices = the parent's UNION vibe's, as a real Literal (make_dataclass:
+    # a class-body annotation is a string here, and cannot name a local).
+    _agents = get_args(get_type_hints(_OrigPlayConfig)["agent"])
+    _agents = tuple(dict.fromkeys(("auto", *_agents, "initial", "release")))
+    PlayConfig = make_dataclass(
+        "PlayConfig", [("agent", Literal[_agents], field(default="auto"))],
+        bases=(_OrigPlayConfig,), frozen=True)
 
     def run_play(task_id: str, cfg):
+        from vibe import release
+
+        if cfg.agent == "release" and task_id in release.released_model_ids():
+            named = [s for s in _CKPT_SOURCES if getattr(cfg, s, None)]
+            if named:
+                raise ValueError(f"--agent release cannot be combined with "
+                                 f"{', '.join('--' + s.replace('_', '-') for s in named)}")
+            ckpt = release.ensure_released_model(task_id)
+            cfg = dataclasses.replace(cfg, agent="trained", checkpoint_file=str(ckpt))
         # Stash for the take recorder: play never exposes the resolved checkpoint,
         # and clips belong next to the weights that produced them.
         play._vibe_play_ctx = (task_id, cfg)

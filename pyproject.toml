@@ -53,6 +53,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
+"vibe" = ["release.json"]
 "vibe.export.encoder" = ["*.yaml"]
 
 # mjlab auto-discovers tasks by importing this module at startup.
@@ -65,6 +66,7 @@ vibe = "vibe"
 [project.scripts]
 export-agent = "vibe.export.agent.export_onnx:main"
 export-encoder = "vibe.export.encoder.export_onnx:main"
+vibe-download-released-models = "vibe.release:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.4"]

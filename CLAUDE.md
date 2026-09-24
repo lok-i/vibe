@@ -123,14 +123,16 @@ python -c "import mjlab, vibe; from mjlab.tasks.registry import list_tasks; prin
 
 train <task-id> --env.scene.num-envs 4096
 play  <task-id> --agent initial --viewer native   # initial = frozen base, no ckpt; also zero|random|trained
+play  <task-id> --agent release --viewer native   # the lkrajan/vibe HF checkpoint (vibe/release.json)
 
 ruff check src [--fix]
 pytest tests/                                     # contracts, no GPU, no checkpoint, ~5 s
 export-agent <task-id> --check                    # ONNX export + two-world diff
 ```
 
-`tests/` follows orcs's rule — **pytest tests CONTRACTS, a real run tests behavior.** Five
-files: `test_export_cases.py` (every task declares an ONNX export episode still live on disk),
+`tests/` follows orcs's rule — **pytest tests CONTRACTS, a real run tests behavior.** Six
+files: `test_release.py` (the manifest names registered tasks; play's `--agent` choices
++ release routing), `test_export_cases.py` (every task declares an ONNX export episode still live on disk),
 `test_repose_scenes.py` (the repose roster and its two physical scenes),
 `test_dodge_cone_fast.py` (the ConeFast room + throw cfg), `test_vision_knobs.py`
 (`--env.img-encoder` rebinds both image terms), `test_stage_render.py` (every task films on the
@@ -372,6 +374,11 @@ and a backbone swap reaches every family together.
   grew perloco's `TerrainMotionCommandCfg`. `apply()` is idempotent for the same reason. The same
   shim adds **`--agent initial`** to `play`: the task's real runner/actor with NO checkpoint
   loaded (adapters → frozen base bit-exact, full obs plumbing live — unlike `--agent zero`).
+  **`--agent` is the same trap one field over**: orcs widens play's Literal with `release`, and a
+  respelled vibe Literal silently dropped it for EVERY task. The choices are the parent's
+  Literal UNION vibe's (`get_args`, never spelled); `release` routes by manifest — a task in
+  `vibe/release.json` resolves via `vibe.release` (orcs's downloader, `package="vibe"`), any other
+  falls through to orcs's. Guarded by `tests/test_release.py`.
 - **A camera on a VARIANT scene silently aliased EVERY entity to body `-1`** (patched 2026-08-04,
   `_patch_variant_scene_indexing`). mjSpec assigns element ids at COMPILE and drops them to -1 on
   the next structural edit; `Scene.__init__` adds sensors AFTER attaching entities, so the head

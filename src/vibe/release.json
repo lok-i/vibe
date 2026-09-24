@@ -1,0 +1,62 @@
+{
+  "schema": "vibe.release.v1",
+  "repo_id": "lkrajan/vibe",
+  "revision": "v0.1.0",
+  "compatibility": {
+    "mocke": "b50fb6d11e7616598dec8b444e88c55b559ec87b",
+    "rsl_rl": "215b6f4ceda569d2ca39df64dd679b9af15375cb",
+    "orcs": "1b71dcf015bdbad224ee166cf477b79433334eca"
+  },
+  "models": {
+    "Vibe-Dodge-ImgFeat-Ext": {
+      "checkpoint": {
+        "path": "Vibe-Dodge-ImgFeat-Ext/checkpoint.pt",
+        "source_name": "model_14999.pt",
+        "iteration": 14999,
+        "size_bytes": 65980569,
+        "sha256": "0d908a475083dc4a0a8b7fe718764de2d11ff0346da4b6075f1536cd62158f7d"
+      },
+      "source_run": "vbp/dodgeball/i8p7jymh"
+    },
+    "Vibe-PerLoco-Grail-ImgFeat-Ext": {
+      "checkpoint": {
+        "path": "Vibe-PerLoco-Grail-ImgFeat-Ext/checkpoint.pt",
+        "source_name": "model_14999.pt",
+        "iteration": 14999,
+        "size_bytes": 67227569,
+        "sha256": "bc024518742424fdb5a186bbdebb608219d4311452fe44724ce62e5cbc191eb7"
+      },
+      "source_run": "vbp/perceptive-locomotion/0uetimde"
+    },
+    "Vibe-PerLoco-OmRe-ImgFeat-Ext": {
+      "checkpoint": {
+        "path": "Vibe-PerLoco-OmRe-ImgFeat-Ext/checkpoint.pt",
+        "source_name": "model_14999.pt",
+        "iteration": 14999,
+        "size_bytes": 67227569,
+        "sha256": "1c512ba7f541e34e616f2b8e516d8a396efc1ef7a84bc3813d2cad77297da788"
+      },
+      "source_run": "vbp/perceptive-locomotion/bc7sz47j"
+    },
+    "Vibe-Repose-BigCubeFloor-ImgFeat-Ext": {
+      "checkpoint": {
+        "path": "Vibe-Repose-BigCubeFloor-ImgFeat-Ext/checkpoint.pt",
+        "source_name": "model_59999.pt",
+        "iteration": 59999,
+        "size_bytes": 66571313,
+        "sha256": "fea77d9d31f7ed5f57158c64b24d6861dd29cbf3aa22e4b67fad079fdb89c0b0"
+      },
+      "source_run": "vbp/repose/011pgzbh"
+    },
+    "Vibe-Uolm-ImgFeat-Ext": {
+      "checkpoint": {
+        "path": "Vibe-Uolm-ImgFeat-Ext/checkpoint.pt",
+        "source_name": "model_24999.pt",
+        "iteration": 24999,
+        "size_bytes": 68693681,
+        "sha256": "b603f2ff790257858facfdb46987dea608923b4614f329add7b064427709e6a9"
+      },
+      "source_run": "vbp/omni-object/kb527g1r"
+    }
+  }
+}

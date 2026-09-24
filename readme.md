@@ -30,7 +30,22 @@ list-envs
 train <task-id> --env.scene.num-envs 4096
 # default rollout out intial policy (zero-init adpater + frozenbase). also zero|random|trained
 play  <task-id> --agent initial --viewer native   
+# released checkpoint, fetched + sha256-verified on first use (~/.cache/vibe/releases)
+play  <task-id> --agent release --viewer native
 ```
+
+released checkpoints ([`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), `v0.1.0`) — one per family:
+
+```bash
+bash scripts/setup/download_released_models.sh    # all, up front; or --list | <task-id>...
+play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
+play Vibe-PerLoco-Grail-ImgFeat-Ext       --agent release --viewer native
+play Vibe-PerLoco-OmRe-ImgFeat-Ext        --agent release --viewer native --num-envs 27  # 27 fills all 9 tiles
+play Vibe-Uolm-ImgFeat-Ext                --agent release --viewer native
+play Vibe-Dodge-ImgFeat-Ext               --agent release --viewer native
+```
+
+`--agent release` on an `Orcs-*` twin plays [`lkrajan/orcs`](https://huggingface.co/lkrajan/orcs)'s. `VIBE_RELEASE_ROOT` moves the cache.
 
 vibe task differs from its privileged twin env in [orcs](https://github.com/lok-i/orcs) by **ONE** obs group:
 
