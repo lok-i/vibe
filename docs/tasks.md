@@ -46,6 +46,8 @@ A knob varied between runs of one task is a flag, not a token. Both are recorded
 |---|---|---|
 | `--env.img-encoder <hf-id>` | the frozen backbone, rebinding both image terms at once ([encoders](#encoders)) | Theia-tiny |
 | `--agent.drop-query-rows q_proprio` | which extractor attention rows exist (z stays 128-d) | none dropped |
+| `--agent.max-iterations N` | run length; shorten `--env.commands.motion.init-phase-anneal-iterations` with it | the released run's |
+| `--agent.amp-dtype bfloat16` | mixed precision, faster on Ampere or newer (the released Repose and Uolm runs) | off |
 | `--num-envs 27` (play, `OmRe`) | fills all 9 terrain tiles | |
 
 ## encoders

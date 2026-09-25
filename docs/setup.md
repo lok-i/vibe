@@ -16,6 +16,8 @@ Both scripts are idempotent: re-run after a `deps.lock` bump. The venv is the ac
 else `./.venv` (created at `.python-version`). Installs are editable only: vibe finds `data/`
 by walking up to the repo root.
 
+Trained on RTX 3090, L40S and RTX 5090 (Linux) at 4096 envs.
+
 ## dependencies
 
 ```

@@ -29,7 +29,7 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 ```bash
 # train
 list-envs                                   # task ids
-train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 --agent.wandb-project vibe
+train Vibe-Uolm-ImgFeat-Ext --agent.wandb-project vibe
 
 # play
 play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
@@ -58,6 +58,13 @@ export-encoder --tag theia-tiny                    # vision backbone -> exports/
 ```
 
 for deployment support, see: [docs/export.md](docs/export.md).
+
+### test
+
+```bash
+ruff check src tests    # lint (also CI)
+pytest tests/           # contracts over the synced data; no GPU, ~7 s
+```
 
 ## tasks
 
@@ -89,6 +96,10 @@ for deployment support, see: [docs/export.md](docs/export.md).
     </td>
   </tr>
 </table>
+
+## roadmap
+
+[docs/roadmap.md](docs/roadmap.md)
 
 ## license
 

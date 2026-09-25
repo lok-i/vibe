@@ -40,6 +40,7 @@ A layout change ships a new metric key rather than a silent behavior change.
 | `docs/architecture.md` | the policy, obs groups, aux objectives, render domain |
 | `docs/metrics.md` | the `Z*` W&B keys and the rules for reading them |
 | `docs/record.md` · `docs/export.md` | the take recorder · ONNX export |
+| `docs/roadmap.md` | what comes after v0.1.0 |
 
 Docs describe usage and design. No run result or analysis number goes in them or here.
 
