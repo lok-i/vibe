@@ -6,7 +6,9 @@
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Model-yellow)](https://huggingface.co/lkrajan/vibe)
 [![License](https://img.shields.io/badge/License-BSD--3-blue)](LICENSE)
 
-implementation accompanying *ViBe: **Vi**sual **Be**havior Adaptation for Perceptive Humanoid Whole-Body Control*.
+<img src="docs/media/overview.jpg" alt="ViBe on a Unitree G1: stepping, dodging, carrying, cube reorientation">
+
+implementation accompanying *ViBe: **Vi**sual **Be**havior Adaptation for Perceptive Humanoid Whole-Body Control* 
 
 
 ## install
@@ -16,8 +18,8 @@ Python itself.
 
 ```bash
 git clone https://github.com/lok-i/vibe && cd vibe
-bash scripts/setup/sync_deps.sh     # .venv + vibe + the code pinned in deps.lock
-bash scripts/setup/sync_data.sh     # all (default) |  inhouse | omre | grail
+bash scripts/setup/sync_deps.sh     # .venv + pinned deps
+bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
 source .venv/bin/activate
 ```
 
@@ -28,55 +30,64 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 ```bash
 list-envs                                          # every task id
 train <task-id> --env.scene.num-envs 4096
-play  <task-id> --viewer native                    # no checkpoint: the untrained policy (= the frozen base)
-play  <task-id> --agent release --viewer native    # the released checkpoint, fetched + sha256-verified once
+play  <task-id> --viewer native                    # untrained: the frozen base
+play  <task-id> --agent release --viewer native    # released checkpoint
 ```
 
 | arg | options |
 |---|---|
 | `--agent` | `auto` · `initial` · `release` · `trained` · `zero` · `random` |
 | `--checkpoint-file` · `--wandb-run-path` | for `trained` |
-| `--viewer` | `auto` · `native` · `viser` |
+| `--viewer` | `auto` · `native` · `viser` (also [records clips](docs/record.md)) |
 | `--env.img-encoder` (train) | [backbones](docs/tasks.md#encoders); default Theia-tiny |
+| `--agent.logger` (train) | `wandb` · `tensorboard`; [reading the metrics](docs/metrics.md) |
 
-## released checkpoints
 
-[`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe) `v0.1.0`, one per task family:
+trained checkpoints released in [`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), one per task.
+`--agent release` fetches on first use into `~/.cache/vibe/releases`,
+or download all up front with `bash scripts/setup/download_released_models.sh`.
+
+### export ONNX
 
 ```bash
-bash scripts/setup/download_released_models.sh    # all up front; or --list | <task-id>...
-play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
-play Vibe-PerLoco-Grail-ImgFeat-Ext       --agent release --viewer native
-play Vibe-PerLoco-OmRe-ImgFeat-Ext        --agent release --viewer native --num-envs 27  # 27 fills all 9 tiles
-play Vibe-Uolm-ImgFeat-Ext                --agent release --viewer native
-play Vibe-Dodge-ImgFeat-Ext               --agent release --viewer native
+bash scripts/setup/sync_deps.sh --deploy           # + onnxruntime
+export-agent   <task-id> --release                 # policy -> exports/agent/<task-id>/
+export-agent   <task-id> --release --viewer native # + watch the two-world check
+export-encoder --tag theia-tiny                    # vision backbone -> exports/enc/
 ```
 
-cache: `~/.cache/vibe/releases`, override with `VIBE_RELEASE_ROOT`.
+for deployment support, see: [docs/export.md](docs/export.md).
 
 ## tasks
 
-| vibe (vision) | privileged twin | swapped for the camera |
-|---|---|---|
-| `Vibe-Repose-BigCubeFloor-ImgFeat{,-Ext,-Sfd,-Lfd}` | `Vibe-Repose-BigCubeFloor-ObjKin` | object kinematics |
-| `Vibe-Repose-SmallCubeTable-ImgFeat-Ext` | — | (new scene: small cube onto a table) |
-| `Vibe-PerLoco-{Grail,OmRe}-ImgFeat-Ext` | `Orcs-PerLoco-{Grail,OmRe}-AdaptSonic` | height scan |
-| `Vibe-Uolm-ImgFeat-Ext` | `Orcs-Uolm-AdaptSonic` | object kinematics + id |
-| `Vibe-Dodge-{,ConeFast-}ImgFeat-Ext` | `Orcs-Dodge-AdaptSonic` | ball kinematics |
-| `Vibe-Repose-BigCubeFloor-ImgRgb` | `…-ImgFeat-Ext` | frozen encoder → trainable CNN |
-
-The critic stays privileged in every row. Id grammar and flags: [docs/tasks.md](docs/tasks.md).
-
-## docs
-
-| doc | for |
-|---|---|
-| [setup](docs/setup.md) | install modes, dependencies, failure modes |
-| [tasks](docs/tasks.md) | task-id grammar, per-run flags |
-| [architecture](docs/architecture.md) | the policy, obs groups, aux objectives, render domain |
-| [metrics](docs/metrics.md) | the `Z*` W&B keys and how to read them |
-| [record](docs/record.md) | film clips from `play --viewer viser`, with the policy's view + attention |
-| [export](docs/export.md) | ONNX export of the policy and the vision encoder |
+<table>
+  <tr>
+    <td align="center">
+      <a href="src/vibe/tasks/repose"><img height="185" src="docs/media/repose.gif" alt="Vibe-Repose-BigCubeFloor-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-Repose-BigCubeFloor-ImgFeat-Ext</code></sub>
+    </td>
+    <td align="center">
+      <a href="src/vibe/tasks/uolm"><img height="185" src="docs/media/uolm.gif" alt="Vibe-Uolm-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-Uolm-ImgFeat-Ext</code></sub>
+    </td>
+    <td align="center">
+      <a href="src/vibe/tasks/dodge"><img height="185" src="docs/media/dodge.gif" alt="Vibe-Dodge-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-Dodge-ImgFeat-Ext</code></sub>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td align="center">
+      <a href="src/vibe/tasks/perloco"><img height="178" src="docs/media/perloco_omre.gif" alt="Vibe-PerLoco-OmRe-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-PerLoco-OmRe-ImgFeat-Ext</code></sub>
+    </td>
+    <td align="center">
+      <a href="src/vibe/tasks/perloco"><img height="178" src="docs/media/perloco_grail.gif" alt="Vibe-PerLoco-Grail-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-PerLoco-Grail-ImgFeat-Ext</code></sub>
+    </td>
+  </tr>
+</table>
 
 ## license
 

@@ -25,6 +25,19 @@ ids the dependencies register.
 | | `Sfd` | + supervised forward-dynamics aux loss |
 | | `Lfd` | + latent forward-dynamics aux loss, against an EMA target |
 
+## twins
+
+| vibe (vision) | privileged twin | swapped for the camera |
+|---|---|---|
+| `Vibe-Repose-BigCubeFloor-ImgFeat{,-Ext,-Sfd,-Lfd}` | `Vibe-Repose-BigCubeFloor-ObjKin` | object kinematics |
+| `Vibe-Repose-SmallCubeTable-ImgFeat-Ext` | — | (new scene: small cube onto a table) |
+| `Vibe-PerLoco-{Grail,OmRe}-ImgFeat-Ext` | `Orcs-PerLoco-{Grail,OmRe}-AdaptSonic` | height scan |
+| `Vibe-Uolm-ImgFeat-Ext` | `Orcs-Uolm-AdaptSonic` | object kinematics + id |
+| `Vibe-Dodge-{,ConeFast-}ImgFeat-Ext` | `Orcs-Dodge-AdaptSonic` | ball kinematics |
+| `Vibe-Repose-BigCubeFloor-ImgRgb` | `…-ImgFeat-Ext` | frozen encoder → trainable CNN |
+
+The critic stays privileged in every row.
+
 ## per-run flags
 
 A knob varied between runs of one task is a flag, not a token. Both are recorded in the run cfg.
@@ -33,6 +46,7 @@ A knob varied between runs of one task is a flag, not a token. Both are recorded
 |---|---|---|
 | `--env.img-encoder <hf-id>` | the frozen backbone, rebinding both image terms at once ([encoders](#encoders)) | Theia-tiny |
 | `--agent.drop-query-rows q_proprio` | which extractor attention rows exist (z stays 128-d) | none dropped |
+| `--num-envs 27` (play, `OmRe`) | fills all 9 terrain tiles | |
 
 ## encoders
 

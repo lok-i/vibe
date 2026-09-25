@@ -1,5 +1,7 @@
 # architecture
 
+<img src="media/approach.png" alt="the ViBe policy: frozen encoder -> extractor -> LoRA adapter on the frozen tracker">
+
 ```
  head cam ─► frozen encoder ─► kv_tokens (B, P, C) ───┐
                                                      ├─► extractor ─► z (128, LayerNorm)
