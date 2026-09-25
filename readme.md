@@ -33,6 +33,8 @@ play  <task-id> --agent release --viewer native    # the released checkpoint, fe
 ```
 
 `--agent` also takes `zero | random | trained` (with `--checkpoint-file` or `--wandb-run-path`).
+Another frozen backbone (DINOv3, SigLIP 2, CLIP): `--env.img-encoder <hf-id>` on both `train` and
+`play`, see [docs/tasks.md](docs/tasks.md#encoders).
 
 ## released checkpoints
 
