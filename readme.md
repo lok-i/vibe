@@ -27,13 +27,13 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 ## usage
 
 ```bash
-# play
-play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native   # released checkpoint
-play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native                  # untrained: the frozen base
-
 # train
 train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 --agent.wandb-project vibe
 list-envs                                                                   # for listing task ids
+
+# play
+play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native   # released checkpoint
+play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native                  # untrained: the frozen base
 ```
 
 | arg | options |
