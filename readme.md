@@ -52,8 +52,7 @@ play Vibe-Uolm-ImgFeat-Ext                --agent release --viewer native
 play Vibe-Dodge-ImgFeat-Ext               --agent release --viewer native
 ```
 
-- cache: `~/.cache/vibe/releases`, override with `VIBE_RELEASE_ROOT`
-- license: NVIDIA Open Model License, as they embed SONIC base weights (see the model card)
+cache: `~/.cache/vibe/releases`, override with `VIBE_RELEASE_ROOT`.
 
 ## tasks
 
