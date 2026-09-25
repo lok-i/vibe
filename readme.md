@@ -8,10 +8,6 @@
 
 implementation accompanying *ViBe: **Vi**sual **Be**havior Adaptation for Perceptive Humanoid Whole-Body Control*.
 
-A frozen whole-body controller (SONIC) on a Unitree G1, adapted from a head camera: a frozen
-vision encoder, a cross-attention extractor and a LoRA adapter on the frozen base. Each task
-is the twin of a privileged [orcs](https://github.com/lok-i/orcs) task with one observation
-group swapped for vision.
 
 ## install
 
