@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper."
+title: "vibe"
+repository-code: "https://github.com/lok-i/vibe"
+license: BSD-3-Clause
+authors:
+  - given-names: Lokesh
+    family-names: Krishna
+  - given-names: Sarvesh
+    family-names: Venkatesan
+  - given-names: An
+    family-names: Zhang
+  - given-names: Quan
+    family-names: Nguyen
+preferred-citation:
+  type: article
+  title: "ViBe: Visual Behavior Adaptation for Perceptive Humanoid Whole-Body Control"
+  authors:
+    - given-names: Lokesh
+      family-names: Krishna
+    - given-names: Sarvesh
+      family-names: Venkatesan
+    - given-names: An
+      family-names: Zhang
+    - given-names: Quan
+      family-names: Nguyen
+  journal: "arXiv preprint arXiv:2609.09918"
+  year: 2026
+  identifiers:
+    - type: other
+      value: "arXiv:2609.09918"
+  url: "https://arxiv.org/abs/2609.09918"
