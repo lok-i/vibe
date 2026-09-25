@@ -31,7 +31,7 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 list-envs                                   # task ids
 train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 --agent.wandb-project vibe
 
-# play: the released checkpoint · the untrained frozen base
+# play
 play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
 play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native
 ```
