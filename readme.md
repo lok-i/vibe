@@ -82,8 +82,8 @@ pytest tests/           # contracts over the synced data; no GPU, ~7 s
       <sub><code>Vibe-Uolm-ImgFeat-Ext</code></sub>
     </td>
     <td align="center">
-      <a href="src/vibe/tasks/dodge"><img height="185" src="docs/media/dodge.gif" alt="Vibe-Dodge-ImgFeat-Ext"></a><br>
-      <sub><code>Vibe-Dodge-ImgFeat-Ext</code></sub>
+      <a href="src/vibe/tasks/dodge"><img height="185" src="docs/media/dodge.gif" alt="Vibe-Dodge-ConeFast-ImgFeat-Ext"></a><br>
+      <sub><code>Vibe-Dodge-ConeFast-ImgFeat-Ext</code></sub>
     </td>
   </tr>
 </table>

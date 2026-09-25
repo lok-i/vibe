@@ -71,7 +71,7 @@ def _raise(tag):
 
 
 @pytest.mark.parametrize("task_id, owner", [
-    ("Vibe-Dodge-ImgFeat-Ext", "vibe"),
+    ("Vibe-Dodge-ConeFast-ImgFeat-Ext", "vibe"),
     ("Orcs-Dodge-AdaptSonic", "orcs"),
 ])
 def test_release_routes_by_manifest(monkeypatch, task_id, owner):
@@ -86,13 +86,13 @@ def test_release_refuses_a_named_checkpoint(monkeypatch):
     monkeypatch.setattr(release, "ensure_released_model", _raise("vibe"))
     cfg = play.PlayConfig(agent="release", checkpoint_file="x.pt")
     with pytest.raises(ValueError, match="--checkpoint-file"):
-        play.run_play("Vibe-Dodge-ImgFeat-Ext", cfg)
+        play.run_play("Vibe-Dodge-ConeFast-ImgFeat-Ext", cfg)
 
 
 def test_initial_refuses_a_named_checkpoint():
     cfg = play.PlayConfig(agent="initial", checkpoint_file="x.pt")
     with pytest.raises(ValueError, match="--agent initial loads no checkpoint"):
-        play.run_play("Vibe-Dodge-ImgFeat-Ext", cfg)
+        play.run_play("Vibe-Dodge-ConeFast-ImgFeat-Ext", cfg)
 
 
 @pytest.mark.parametrize("agent, ckpt, out", [
@@ -137,7 +137,7 @@ def test_exporter_imports_without_onnxruntime(monkeypatch):
 
 
 @pytest.mark.parametrize("task_id, owner", [
-    ("Vibe-Dodge-ImgFeat-Ext", "vibe"),
+    ("Vibe-Dodge-ConeFast-ImgFeat-Ext", "vibe"),
     ("Orcs-Dodge-AdaptSonic", "orcs"),
 ])
 def test_export_release_routes_by_manifest(monkeypatch, task_id, owner):
@@ -153,4 +153,4 @@ def test_export_release_refuses_a_named_checkpoint(monkeypatch):
     ex = _exporter(monkeypatch)
     cfg = ex.ExportConfig(release=True, checkpoint_file="x.pt")
     with pytest.raises(ValueError, match="--release cannot be combined"):
-        ex._resolve_checkpoint(cfg, "Vibe-Dodge-ImgFeat-Ext", "exp")
+        ex._resolve_checkpoint(cfg, "Vibe-Dodge-ConeFast-ImgFeat-Ext", "exp")

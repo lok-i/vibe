@@ -8,9 +8,9 @@
     "orcs": "1b71dcf015bdbad224ee166cf477b79433334eca"
   },
   "models": {
-    "Vibe-Dodge-ImgFeat-Ext": {
+    "Vibe-Dodge-ConeFast-ImgFeat-Ext": {
       "checkpoint": {
-        "path": "Vibe-Dodge-ImgFeat-Ext/checkpoint.pt",
+        "path": "Vibe-Dodge-ConeFast-ImgFeat-Ext/checkpoint.pt",
         "source_name": "model_14999.pt",
         "iteration": 14999,
         "size_bytes": 65980569,

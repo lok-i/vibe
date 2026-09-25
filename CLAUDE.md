@@ -68,8 +68,9 @@ so **vibe's lock wins**; believe `orcs.core.deps`'s import-time drift line, abov
 `pip install -e .[extra]` after a sync: it re-resolves mjlab's `rsl-rl-lib==5.2.0` over the fork.
 
 `pytest tests/` tests CONTRACTS; a real run (`play`, `export-agent --check`) tests behavior.
-Four files: `test_release` (manifest, `--agent` union, release routing, export + clip paths),
-`test_export_cases`, `test_repose_scenes`, `test_vision_knobs`.
+Five files: `test_release` (manifest, `--agent` union, release routing, export + clip paths),
+`test_dodge_cone_fast` (the released Dodge env), `test_export_cases`, `test_repose_scenes`,
+`test_vision_knobs`.
 
 ## Layout
 
