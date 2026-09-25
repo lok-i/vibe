@@ -32,7 +32,7 @@ play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native   # re
 play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native                  # untrained: the frozen base
 
 # train
-train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096
+train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 --agent.wandb-project vibe
 list-envs                                                                   # for listing task ids
 ```
 
@@ -42,7 +42,7 @@ list-envs                                                                   # fo
 | `--checkpoint-file` · `--wandb-run-path` | for `trained` |
 | `--viewer` | `auto` · `native` · `viser` (also [records clips](docs/record.md)) |
 | `--env.img-encoder` (train) | [backbones](docs/tasks.md#encoders); default Theia-tiny |
-| `--agent.logger` (train) | `wandb` (project `vibe`) · `tensorboard`; [reading the metrics](docs/metrics.md) |
+| `--agent.logger` (train) | `wandb` · `tensorboard`; [reading the metrics](docs/metrics.md) |
 
 trained checkpoints released in [`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), one per task.
 `--agent release` fetches on first use into `~/.cache/vibe/releases`,
