@@ -47,6 +47,9 @@ class VibeRunnerCfg(RslRlOnPolicyRunnerCfg):
     field carries it.
     """
 
+    wandb_project: str = "vibe"
+    """W&B project, one for every vibe task (mjlab's default is "mjlab")."""
+
     torch_compile_mode: str | None = None
     """torch.compile for actor+critic. OFF — measured ~1% at 4096 envs with bf16 on.
     Use "default" if you enable it; the autotune modes crash in Inductor codegen on
