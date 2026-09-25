@@ -157,8 +157,7 @@ STAGE_RGBA = (0.30, 0.30, 0.32, 1.0)
 Chosen on the RENDER, for two things at once: the robot must separate from the floor
 (a light floor meets the G1's silver) and the floor must keep a visible cast shadow (a black
 floor deletes it, and the robot floats). Slate is the darkest tone that keeps the shadow. It
-sits inside the span of `GROUND_RGBAS`, so the frozen encoder sees an in-distribution floor
-(`tests/test_stage_render.py`).
+sits inside the span of `GROUND_RGBAS`, so the frozen encoder sees an in-distribution floor.
 """
 
 

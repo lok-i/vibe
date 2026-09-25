@@ -51,7 +51,7 @@ bash scripts/setup/sync_data.sh [MODE...]         # data rows + staged terrain; 
 bash scripts/setup/sync_{deps,data}.sh --check    # verify pass alone — no network, no pip
 
 list-envs
-train <task-id> --env.scene.num-envs 4096
+train <task-id>                                   # the released schedule, 4096 envs
 play  <task-id> --viewer native                   # agent=auto: initial (no ckpt) unless a checkpoint is named
 play  <task-id> --agent release --viewer native   # the lkrajan/vibe checkpoint (vibe/release.json)
 export-agent <task-id> --release                  # ONNX export + two-world check
@@ -67,9 +67,8 @@ so **vibe's lock wins**; believe `orcs.core.deps`'s import-time drift line, abov
 `pip install -e .[extra]` after a sync: it re-resolves mjlab's `rsl-rl-lib==5.2.0` over the fork.
 
 `pytest tests/` tests CONTRACTS; a real run (`play`, `export-agent --check`) tests behavior.
-Six files: `test_release` (manifest, `--agent` union, release routing, export + clip paths),
-`test_export_cases`, `test_repose_scenes`, `test_dodge_cone_fast`, `test_vision_knobs`,
-`test_stage_render`.
+Five files: `test_release` (manifest, `--agent` union, release routing, export + clip paths),
+`test_train_schedule`, `test_export_cases`, `test_repose_scenes`, `test_vision_knobs`.
 
 ## Layout
 
