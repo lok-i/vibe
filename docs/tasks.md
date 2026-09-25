@@ -46,9 +46,27 @@ A knob varied between runs of one task is a flag, not a token. Both are recorded
 |---|---|---|
 | `--env.img-encoder <hf-id>` | the frozen backbone, rebinding both image terms at once ([encoders](#encoders)) | Theia-tiny |
 | `--agent.drop-query-rows q_proprio` | which extractor attention rows exist (z stays 128-d) | none dropped |
-| `--agent.max-iterations N` | run length; shorten `--env.commands.motion.init-phase-anneal-iterations` with it | the released run's |
-| `--agent.amp-dtype bfloat16` | mixed precision, faster on Ampere or newer (the released Repose and Uolm runs) | off |
 | `--num-envs 27` (play, `OmRe`) | fills all 9 terrain tiles | |
+
+## train
+
+The released runs, flag for flag. The anneal ends before the run does: shorten both together.
+`--agent.amp-dtype bfloat16` needs an Ampere or newer GPU; drop it on older cards.
+
+```bash
+train Vibe-Repose-BigCubeFloor-ImgFeat-Ext --env.scene.num-envs 4096 \
+  --agent.max-iterations 60000 --env.commands.motion.init-phase-anneal-iterations 50000 \
+  --agent.amp-dtype bfloat16
+train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 \
+  --agent.max-iterations 25000 --env.commands.motion.init-phase-anneal-iterations 20000 \
+  --agent.amp-dtype bfloat16
+train Vibe-PerLoco-Grail-ImgFeat-Ext --env.scene.num-envs 4096 \
+  --agent.max-iterations 15000 --env.commands.motion.init-phase-anneal-iterations 10000
+train Vibe-PerLoco-OmRe-ImgFeat-Ext --env.scene.num-envs 4096 \
+  --agent.max-iterations 15000 --env.commands.motion.init-phase-anneal-iterations 10000
+train Vibe-Dodge-ConeFast-ImgFeat-Ext --env.scene.num-envs 4096 \
+  --agent.max-iterations 15000
+```
 
 ## encoders
 
