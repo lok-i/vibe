@@ -28,10 +28,10 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 ## usage
 
 ```bash
-list-envs                                          # every task id
-train <task-id> --env.scene.num-envs 4096
-play  <task-id> --viewer native                    # untrained: the frozen base
-play  <task-id> --agent release --viewer native    # released checkpoint
+list-envs                                                                   # every task id
+train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096
+play  Vibe-Dodge-ImgFeat-Ext --viewer native                                # untrained: the frozen base
+play  Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native  # released checkpoint
 ```
 
 | arg | options |
