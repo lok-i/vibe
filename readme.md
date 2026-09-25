@@ -32,9 +32,12 @@ play  <task-id> --viewer native                    # no checkpoint: the untraine
 play  <task-id> --agent release --viewer native    # the released checkpoint, fetched + sha256-verified once
 ```
 
-`--agent` also takes `zero | random | trained` (with `--checkpoint-file` or `--wandb-run-path`).
-Another frozen backbone (DINOv3, SigLIP 2, CLIP): `--env.img-encoder <hf-id>` on both `train` and
-`play`, see [docs/tasks.md](docs/tasks.md#encoders).
+| arg | options |
+|---|---|
+| `--agent` | `auto` · `initial` · `release` · `trained` · `zero` · `random` |
+| `--checkpoint-file` · `--wandb-run-path` | for `trained` |
+| `--viewer` | `auto` · `native` · `viser` |
+| `--env.img-encoder` (train) | [backbones](docs/tasks.md#encoders); default Theia-tiny |
 
 ## released checkpoints
 
