@@ -1,0 +1,14 @@
+# Lint only: pytest needs the synced deps + data, so it runs locally (readme, test).
+name: lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx ruff@0.16.8 check src tests
