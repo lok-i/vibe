@@ -17,11 +17,11 @@ Python itself.
 ```bash
 git clone https://github.com/lok-i/vibe && cd vibe
 bash scripts/setup/sync_deps.sh     # .venv + vibe + the code pinned in deps.lock
-bash scripts/setup/sync_data.sh     # data for every Vibe-* task (~0.6 GB); or inhouse | omre | grail
+bash scripts/setup/sync_data.sh     # all (default) |  inhouse | omre | grail
 source .venv/bin/activate
 ```
 
-Modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
+modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 
 ## usage
 
@@ -52,9 +52,8 @@ play Vibe-Uolm-ImgFeat-Ext                --agent release --viewer native
 play Vibe-Dodge-ImgFeat-Ext               --agent release --viewer native
 ```
 
-`--agent release` on an `Orcs-*` twin plays [`lkrajan/orcs`](https://huggingface.co/lkrajan/orcs)'s.
-The cache is `~/.cache/vibe/releases`, moved by `VIBE_RELEASE_ROOT`. The checkpoints embed
-SONIC base weights and are released under the NVIDIA Open Model License (see the model card).
+- cache: `~/.cache/vibe/releases`, override with `VIBE_RELEASE_ROOT`
+- license: NVIDIA Open Model License, as they embed SONIC base weights (see the model card)
 
 ## tasks
 
