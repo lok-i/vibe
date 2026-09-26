@@ -1,6 +1,6 @@
 # metrics
 
-What the extractor and the aux objectives log, under four W&B sections.
+What the extractor and the aux objectives log, under four W&B sections, plus the bf16 guard.
 
 | key | good direction | range | a bad value means |
 |---|---|---|---|
@@ -15,6 +15,7 @@ What the extractor and the aux objectives log, under four W&B sections.
 | `ZGradient/cos` | — | [-1, 1] | < 0: the two objectives fight over z |
 | `Episode_Metrics/object_in_fov` | ↑ | [0, 1] | low and flat: a camera-aim problem, not an extractor one |
 | `Metrics/motion/at_goal_color` · `_ever` | ↑ | [0, 1] | repose success at the terminal step · at any frame |
+| `Diagnostics/logp_drift_mb0` | ↓ | ~1e-3 healthy | ~1e-1: bf16 leaks into the PPO ratio; drop `--agent.amp-dtype` |
 
 Three rules:
 

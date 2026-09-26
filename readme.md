@@ -31,7 +31,7 @@ modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
 list-envs                                   # task ids
 train Vibe-Repose-BigCubeFloor-ImgFeat-Ext --env.scene.num-envs 4096 \
   --agent.max-iterations 60000 --env.commands.motion.init-phase-anneal-iterations 50000 \
-  --agent.amp-dtype bfloat16 --agent.wandb-project vibe
+  --agent.wandb-project vibe
 
 # play
 play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
@@ -46,10 +46,10 @@ play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native
 | `--env.img-encoder` (train) | [backbones](docs/tasks.md#encoders); default Theia-tiny |
 | `--agent.logger` (train) | `wandb` · `tensorboard`; [reading the metrics](docs/metrics.md) |
 
-trained checkpoints released in [`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), one per task
-([train commands](docs/tasks.md#train)).
-`--agent release` fetches on first use into `~/.cache/vibe/releases`,
-or download all up front with `bash scripts/setup/download_released_models.sh`.
+- checkpoints: [`lkrajan/vibe`](https://huggingface.co/lkrajan/vibe), one per task
+- `--agent release`: fetched on first use into `~/.cache/vibe/releases`
+- all up front: `bash scripts/setup/download_released_models.sh`
+- train commands, every task: [docs/tasks.md](docs/tasks.md#train)
 
 ### export ONNX
 
@@ -100,9 +100,10 @@ pytest tests/           # contracts over the synced data; no GPU, ~7 s
   </tr>
 </table>
 
-## roadmap
+## contribute
 
-[docs/roadmap.md](docs/roadmap.md)
+Contributions are warmly welcome, whether they pick up an item on our
+[roadmap](docs/roadmap.md) or bring a new feature. Open an issue or a PR and we'll build it together.
 
 ## license
 

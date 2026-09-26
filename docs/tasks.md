@@ -50,16 +50,13 @@ A knob varied between runs of one task is a flag, not a token. Both are recorded
 
 ## train
 
-The released runs, flag for flag. The anneal ends before the run does: shorten both together.
-`--agent.amp-dtype bfloat16` needs an Ampere or newer GPU; drop it on older cards.
+The released runs' flags. The anneal ends before the run does: shorten both together.
 
 ```bash
 train Vibe-Repose-BigCubeFloor-ImgFeat-Ext --env.scene.num-envs 4096 \
-  --agent.max-iterations 60000 --env.commands.motion.init-phase-anneal-iterations 50000 \
-  --agent.amp-dtype bfloat16
+  --agent.max-iterations 60000 --env.commands.motion.init-phase-anneal-iterations 50000
 train Vibe-Uolm-ImgFeat-Ext --env.scene.num-envs 4096 \
-  --agent.max-iterations 25000 --env.commands.motion.init-phase-anneal-iterations 20000 \
-  --agent.amp-dtype bfloat16
+  --agent.max-iterations 25000 --env.commands.motion.init-phase-anneal-iterations 20000
 train Vibe-PerLoco-Grail-ImgFeat-Ext --env.scene.num-envs 4096 \
   --agent.max-iterations 15000 --env.commands.motion.init-phase-anneal-iterations 10000
 train Vibe-PerLoco-OmRe-ImgFeat-Ext --env.scene.num-envs 4096 \
@@ -67,6 +64,11 @@ train Vibe-PerLoco-OmRe-ImgFeat-Ext --env.scene.num-envs 4096 \
 train Vibe-Dodge-ConeFast-ImgFeat-Ext --env.scene.num-envs 4096 \
   --agent.max-iterations 15000
 ```
+
+> **bf16.** The released Repose and Uolm runs also passed `--agent.amp-dtype bfloat16`, on an
+> RTX 5090. It holds there only: on a 3090 or L40S, `Diagnostics/logp_drift_mb0` sits near
+> 1e-1 instead of 1e-3 ([metrics](metrics.md)) and reward stalls below the fp32 run. Leave it
+> off unless that key stays low on your card.
 
 ## encoders
 

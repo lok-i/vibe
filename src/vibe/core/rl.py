@@ -63,8 +63,10 @@ class VibeRunnerCfg(RslRlOnPolicyRunnerCfg):
     amp_dtype: str | None = None
     """Body-autocast dtype for actor+critic — "bfloat16" | "float16" | None.
 
-    bf16 is ~1.3x on learning at reward parity. The head stays fp32 and the SONIC
-    encoder stays out of autocast entirely (FSQ's rounding grid); both invariants
+    bf16 is ~1.3x on learning at reward parity ON AN RTX 5090; a 3090 or L40S
+    drifts (~1e-1, reward stalls), so it is opt-in (docs/tasks.md#train). The head
+    stays fp32 and the SONIC encoder stays out of autocast entirely (FSQ's rounding
+    grid); both invariants
     live in `rsl_rl.modules.AmpMixin`, and breaking either is what collapsed the
     first attempt. Gate on `Diagnostics/logp_drift_mb0` (~1e-3 healthy, ~1e-1 = the
     seam leaks). Under `play` use `VIBE_AMP=bfloat16` — play discards agent-cfg
