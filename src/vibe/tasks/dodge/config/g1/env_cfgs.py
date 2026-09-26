@@ -17,15 +17,12 @@ Three departures from the other vibe seams, all forced by the task:
   floor    matte and untextured, where the other tasks only need it recolourable
            — a reflective plane renders a MIRRORED ball (note below).
   the ask  every other vibe task hands the adapter a reference that already
-           performs the task AND a sys1 command to condition on. Here the
-           reference says "stand still" and there is no sys1, so the adapter
-           reads **z alone** — see `observation_cfgs`. That makes dodge the
-           minimal statement of task-optimal behaviour adaptation in this repo:
-           nothing but vision can author the evasion.
+           performs the task AND a motion command to condition on. Here the
+           reference stands still and the command is constant, so the adapter
+           reads **z alone** (`observation_cfgs`): nothing but vision can author
+           the evasion.
 
-**This row is built to transfer** (2026-08-06): the full render domain plus
-orcs's robot robustness, the set repose transferred on. Run 1's nominal domain
-answered the behaviour question; this one asks the hardware question.
+Trained with the full render domain plus orcs's robot robustness domain.
 """
 
 from __future__ import annotations
@@ -46,7 +43,6 @@ from vibe.core.env_cfgs import (
     flat_floor,
 )
 from vibe.core.mdp.metrics import object_in_fov
-from vibe.core.observation_cfgs import TOKEN_GROUP
 from vibe.core.sensors import HEAD_CAM_NAME
 from vibe.tasks.dodge.config.g1 import observation_cfgs as oc
 from vibe.tasks.dodge.config.g1.sensors import attach_dodge_cam
@@ -63,29 +59,10 @@ speed to roughly 5.6 m/s without shortening that reaction window; the 1.2-2.2 s
 interval roughly doubles the fraction of training frames containing a throw.
 """
 
-# The flat floor is `vibe.core.env_cfgs.flat_floor` since 2026-08-06 — every
-# vision task on a plane needs it, for the reason recorded there (the checker
-# ALIASES at 112x63, and it BEATS mat_rgba so nothing else can recolour the
-# ground). Dodge found it, so the dodge-specific half of the finding lives here:
-#
-#   REFLECTANCE  mjlab's groundplane ships `reflectance=0.2`, and a reflective
-#                MuJoCo plane renders a MIRRORED BALL below the floor line. A
-#                second, fake, converging ball in frame is a worse distractor
-#                than the checker ever was.
-#   PARALLAX     against "a checker gives parallax the policy could read
-#                velocity from": it cannot today — the extractor sees ONE frame
-#                and z carries no temporal channel, so a single image has no
-#                velocity in it whatever the floor looks like. If a token/z
-#                history lands, the answer is a texture ablation, not a guess.
-#                Even then the geometry is unhelpful: after the re-pitch the
-#                ball's median elevation sits near the camera axis with much of
-#                the flight ABOVE the horizon, projected against background.
-#
-# The floor COLOUR is now randomized per env like every other vibe task, so the
-# 0.6 grey is a nominal rather than the value. What still holds after the swap
-# is the ball's separability: an 0.85/0.25/0.12 red is separated from the whole
-# ground palette in CHROMA, which is what survives a low-resolution ViT patch
-# more reliably than luminance.
+# The floor is `vibe.core.env_cfgs.flat_floor` (no checker, no reflection: a reflective
+# plane mirrors a second ball). A floor texture could not give velocity cues anyway: the
+# extractor sees one frame. The red ball stays separable from the whole floor palette in
+# CHROMA, which survives a low-resolution ViT patch better than luminance.
 
 
 def g1_dodge_env_cfg(
@@ -162,16 +139,10 @@ def g1_dodge_env_cfg(
 def g1_dodge_cone_fast_env_cfg(
     *, play: bool = False, **orcs_kw
 ) -> ManagerBasedRlEnvCfg:
-    """The exact single-frame ConeFast environment used by ``na75lk4d``."""
-    cfg = g1_dodge_env_cfg(
+    """Dodge in the indoor room: faster throws, farther releases, a 64-px camera."""
+    return g1_dodge_env_cfg(
         room=True,
         camera_height=64,
         play=play,
         **(DODGE_CONE_FAST_THROW | orcs_kw),
     )
-    # The source run serialized this explicit zero after history support landed.
-    # It remains a single-frame no-op here; the current image term accepts extra
-    # params via ``**_kw`` and allocates no history buffer.
-    tokens = cfg.observations[TOKEN_GROUP].terms["img_tokens"]
-    tokens.params = {**tokens.params, "delay_steps": 0}
-    return cfg

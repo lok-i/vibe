@@ -7,8 +7,8 @@ here.
   adapt_sonic_agent_cfg()  frozen SONIC + LoRA, ObjKin / ImgFeat[+extractor,PPOAux]
   adapt_sonic_cnn_agent_cfg()  the same base, ImgRgb through a trainable CNN
 
-The runner/algo/critic spine (`_runner`) comes from `vibe.core.rl`; each factory
-sets only its actor.
+The runner/algo/critic spine comes from `vibe.core.rl`; each factory sets only
+its actor.
 """
 
 from __future__ import annotations
@@ -16,18 +16,12 @@ from __future__ import annotations
 import dataclasses
 
 from mjlab.rl import RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
-
-# The PPO spine moved from `orcs.tasks.uolm.rl_cfg` to `orcs.core.rl` when
-# perloco arrived and a second task needed it — and shed its underscores on the
-# way, because a shared spine is public API, not a task's private detail.
 from orcs.core.rl import NUM_STEPS_PER_ENV
 
-# The runner spine + the extractor swap are `vibe.core.rl` — shared with every
-# vibe task that reads a camera. What stays here is repose's: the CNN row and
-# the aux objectives (a target set is task-specific).
-from vibe.core.rl import VibeRunnerCfg, attach_extractor  # noqa: F401
+# What stays here is repose's: the CNN row and the aux objectives (a target set is
+# task-specific).
 from vibe.core.rl import adapt_sonic_agent_cfg as _adapt_sonic
-from vibe.core.rl import runner as _runner  # noqa: F401
+from vibe.core.rl import attach_extractor
 from vibe.tasks.repose.config.g1 import observation_cfgs
 
 # ---------------------------------------------------------------------------
@@ -45,16 +39,14 @@ _AUX_COMMON = {
 }
 # ONE K for both FD variants (= OpenTrack unroll_length); each recurses in ITS state space:
 # Lfd in latent z, Sfd in the supervised target space (K-step windows, true-s seed per
-# window). The retired Reg probe is now an Sfd config: unroll_steps=1,
-# start_with_current_step=True, autoregress=False — dynamics-free decodability.
-# Conditioning/target groups ride the rsl_rl defaults (prediction_{conditioning,target});
-# conditioning experiments = edit that group's terms in _helpers, not here.
+# window). Conditioning/target groups ride the rsl_rl defaults
+# (prediction_{conditioning,target}), built in `observation_cfgs`.
 _AUX_UNROLL = 10
 
 # Aux batch budget, in encoder-gradient ROWS PER ENV — the unit that survives the two
 # variants sampling in different units (Sfd: env columns x all windows; Lfd: flat (t, env)
 # window starts). This value IS Sfd's implied budget, so Lfd inherits it and Sfd keeps its
-# own formula untouched (byte-identical to the 0p7p3 baseline run). Per-ENV, so an
+# own formula untouched. Per-ENV, so an
 # --env.scene.num-envs change rescales both identically (rl_cfg cannot see num_envs).
 #   Sfd: (T // K) windows x K steps / num_mini_batches = (24 // 10) * 10 / 4 = 5.0
 #   Lfd: 5.0 * num_envs / K sampled starts  ->  same encoder rows per aux call

@@ -21,10 +21,6 @@ from __future__ import annotations
 import dataclasses
 
 from mjlab.rl import RslRlModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
-
-# The PPO spine moved from `orcs.tasks.uolm.rl_cfg` to `orcs.core.rl` when
-# perloco arrived and a second task needed it — and shed its underscores on the
-# way, because a shared spine is public API, not a task's private detail.
 from orcs.core.rl import (
     CRITIC_HIDDEN,
     NUM_STEPS_PER_ENV,
@@ -51,6 +47,9 @@ class VibeRunnerCfg(RslRlOnPolicyRunnerCfg):
     field carries it.
     """
 
+    wandb_project: str = "vibe"
+    """W&B project, one for every vibe task (mjlab's default is "mjlab")."""
+
     torch_compile_mode: str | None = None
     """torch.compile for actor+critic. OFF — measured ~1% at 4096 envs with bf16 on.
     Use "default" if you enable it; the autotune modes crash in Inductor codegen on
@@ -64,8 +63,10 @@ class VibeRunnerCfg(RslRlOnPolicyRunnerCfg):
     amp_dtype: str | None = None
     """Body-autocast dtype for actor+critic — "bfloat16" | "float16" | None.
 
-    bf16 is ~1.3x on learning at reward parity. The head stays fp32 and the SONIC
-    encoder stays out of autocast entirely (FSQ's rounding grid); both invariants
+    bf16 is ~1.3x on learning at reward parity ON AN RTX 5090; a 3090 or L40S
+    drifts (~1e-1, reward stalls), so it is opt-in (docs/tasks.md#train). The head
+    stays fp32 and the SONIC encoder stays out of autocast entirely (FSQ's rounding
+    grid); both invariants
     live in `rsl_rl.modules.AmpMixin`, and breaking either is what collapsed the
     first attempt. Gate on `Diagnostics/logp_drift_mb0` (~1e-3 healthy, ~1e-1 = the
     seam leaks). Under `play` use `VIBE_AMP=bfloat16` — play discards agent-cfg
@@ -84,11 +85,10 @@ class VibeRunnerCfg(RslRlOnPolicyRunnerCfg):
     z stays 128-d in every arm (`proj: m*attn_dim -> latent_dim`), so the adapter's
     budget is constant and the ablation measures ROUTING, not capacity.
 
-    A plain string rather than a tuple, and that is deliberate: mjlab's TYRO_FLAGS
-    carry `UsePythonSyntaxForLiteralCollections`, so a collection flag reads
-    `"['a','b']"` — and the CARC manifest is whitespace-split AND glob-expanded, where
-    a bare `[...]` is a live glob pattern. `--agent.actor.extractor-cfg.<group>.query-groups`
-    is still there for anyone wanting to set the KEEP set outright.
+    A plain string rather than a tuple: mjlab's TYRO_FLAGS carry
+    `UsePythonSyntaxForLiteralCollections`, so a collection flag reads `"['a','b']"`,
+    which a shell or job script globs. `--agent.actor.extractor-cfg.<group>.query-groups`
+    sets the KEEP set outright.
     """
 
     def __post_init__(self) -> None:
@@ -150,8 +150,7 @@ def runner(
 #   cross_attention  frozen task-agnostic encoder -> task-specific attention pool
 #   cnn              task-specific trainable encoder over raw pixels (the baseline)
 #
-# num_heads is reserved for the multi-head step (docs/perception/encoders.md); the MLP
-# extractor is retired (the low-res baseline lives in an older 57x32 commit).
+# num_heads is reserved (the extractor asserts 1).
 EXTRACTOR_CFGS = {
     "cross_attention": lambda query_groups: (oc.TOKEN_GROUP, {
         "class_name": "rsl_rl.modules.CrossAttentionExtractor",
@@ -228,10 +227,8 @@ def attach_extractor(
     none. No env-side coupling beyond the group NAMES, shared via
     `observation_cfgs`.
 
-    `stream_groups=()` is the z-ONLY adapter: legal, and dodge's. Removing sys1
-    from a task removes its command stream with it, and a stream of constants is
-    not a stream — the env drops the `augmentation` group entirely, so naming it
-    here would ask the model for a group that does not exist.
+    `stream_groups=()` is the z-ONLY adapter: dodge's, whose command stream is a
+    constant, so its env drops the `augmentation` group entirely.
     """
     ext_cfg = extractor_cfg(query_groups, extractor)
     cfg.actor["class_name"] = "rsl_rl.models.ExtractorSonicAdapterModel"  # type: ignore[index]

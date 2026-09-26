@@ -52,8 +52,6 @@ VIBE_ROOT: Path = _env("VIBE_ROOT") or _walk_up()
 DATA_ROOT: Path = _env("VIBE_DATA_ROOT") or VIBE_ROOT / "data"
 DEPS_ROOT: Path = _env("VIBE_DEPS_ROOT") or VIBE_ROOT / "dependencies"
 
-LOGS_ROOT: Path = VIBE_ROOT / "logs"
-
 _G1_CUSTOM = DATA_ROOT / "retargeted_motions/data/unitree_g1/custom"
 
 G1_REPOSE_BIG_CUBE_FLOOR_DATASET: list[Path] = [
@@ -141,12 +139,3 @@ def _main() -> None:
 
 if __name__ == "__main__":
     _main()
-
-
-def default_motion_file() -> str:
-    """First big-cube clip (deterministic ordering)."""
-    for d in G1_REPOSE_BIG_CUBE_FLOOR_DATASET:
-        clips = sorted(Path(d).rglob("motion.npz"))  # depth-agnostic
-        if clips:
-            return str(clips[0])
-    return ""

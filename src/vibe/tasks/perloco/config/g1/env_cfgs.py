@@ -11,12 +11,9 @@ the ADAPTER reads: orcs's 187-ray height scan becomes frozen encoder features
 from the head camera. That is what makes these rows comparable to
 `Orcs-PerLoco-{OmRe,Grail}-AdaptSonic` rather than merely similar to them.
 
-**This row is built to transfer** (2026-08-06), which changed what "one thing
-moves" means. Run 1 held everything at orcs parity — no domain, root state in
-the adapter stream — to ask whether a frozen WBC could read terrain through a
-camera at all. It can, so the question is now hardware, and two things follow:
-the adapter loses the privileged root state (odometry + estimated base velocity)
-and gains the full render domain, the one repose transferred on.
+Beyond the swap, the adapter also drops the privileged root state (odometry +
+estimated base velocity) and trains with the full render domain, so every actor
+input is available on hardware.
 """
 
 from __future__ import annotations

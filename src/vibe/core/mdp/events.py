@@ -5,12 +5,10 @@ properties of the robot and the room, not of a cube, a curb or a ball. What
 stays task-local is anything that DEFINES a task (repose's face-colour perm is
 the goal channel, not a domain — `vibe.tasks.repose.mdp.events`).
 
-Recipe + sharp bits: docs/perception/render_domain.md — fields are declared via
-@requires_model_fields so the EventManager expands them per-world BEFORE graph
-capture, and colour must land on `mat_rgba` as well as `geom_rgba` (material
-beats geom at render; a plane's groundplane carries one). A checker TEXTURE
-beats both, so a scene whose floor is recoloured must lose its texture first
-(`vibe.core.env_cfgs.flat_floor`).
+Fields are declared via @requires_model_fields so the EventManager expands them
+per-world BEFORE graph capture. Colour lands on `mat_rgba` as well as `geom_rgba`
+(material beats geom at render), and a checker TEXTURE beats both, so a recoloured
+floor must lose its texture first (`vibe.core.env_cfgs.flat_floor`).
 """
 
 from __future__ import annotations
@@ -25,7 +23,7 @@ from mjlab.utils.lab_api.math import quat_from_euler_xyz, quat_mul
 __all__ = ["GROUND_RGBAS", "rand_terrain_color", "set_terrain_color",
            "rand_cam_extrinsics"]
 
-# Muted ground palette (collect_frames parity) — every entry is >100 rgb-dist
+# Muted ground palette — every entry is >100 rgb-dist
 # (0-255 Euclidean) from all 6 repose cube face colors so a color-threshold cube
 # mask can never alias the floor. Min margin across the set is ~104
 # (tan/off-white); validate new tones the same way before adding.
@@ -151,7 +149,7 @@ def set_terrain_color(
 
     The stage a clip is filmed on, not a domain: `vibe.core.env_cfgs.STAGE_RGBA`
     under `play` only, so four task families collage as one shoot instead of
-    four different rooms (`docs/perception/render_domain.md`).
+    four different rooms (docs/architecture.md, render domain).
 
     RAISED geometry keeps its nominal colour — a perloco curb or a uolm prop is
     the thing being looked at, and only the flat ground under it has to match
@@ -210,9 +208,9 @@ def rand_cam_extrinsics(
     through `sim.get_default_field`, so repeated calls never accumulate) and the
     same per-world write path as `rand_terrain_color`.
 
-    Defaults are TIGHTER than fcrl's ±4 cm / ±3°: at 112x63 the 69° horizontal
-    FOV spans 7 patch columns (~9.9°/patch), so ±2° is a fifth of a patch — a
-    plausible bolt-up error rather than a re-aimed camera.
+    Defaults are tight on purpose: at 112x63 the 69° horizontal FOV spans 7 patch
+    columns (~9.9°/patch), so ±2° is a fifth of a patch — a plausible bolt-up
+    error rather than a re-aimed camera.
     """
     if env_ids is None:
         env_ids = torch.arange(env.num_envs, device=env.device)

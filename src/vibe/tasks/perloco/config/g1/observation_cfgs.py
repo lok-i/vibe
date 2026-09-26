@@ -1,29 +1,16 @@
 """observation_cfgs.py — perloco's VISION groups.
 
-Read this against `orcs.tasks.perloco.observation_cfgs`: the two differ in ONE
-term, and that term is the whole experiment.
+Read against `orcs.tasks.perloco.observation_cfgs`: the two differ in the adapter's stream.
 
     [base]      policy + tokenizer streams   — mocke (frozen SONIC contract)
-    [adapter]   AUGMENTATION                 — orcs:  TERRAIN height scan
-                                                      + robot root state
-                                               vibe:  z, and sys1's twist cmd
-    [critic]    privileged full state        — orcs's, VERBATIM (scan included)
+    [adapter]   orcs: height scan + robot root state + root-twist command
+                vibe: z + the root-twist command
+    [critic]    privileged full state        — orcs's, verbatim (scan included)
 
-The critic keeping the height scan is the point, not an oversight: the actor
-goes vision-only while the value function keeps the terrain oracle.
-
-**Everything the actor reads is now measurable on hardware.** Two things left,
-not one: the scan (swapped for pixels) and the robot ROOT STATE (deleted —
-`robot_root_pos_env` is odometry, `robot_root_lin_vel_b` wants a state
-estimator). The pair is no longer a one-term A/B against
-`Orcs-PerLoco-*-AdaptSonic`; it is a deployable policy, which is the thing this
-revision is for. SONIC's history-10 proprio stream carries whatever root
-estimate the base has learned to infer, and that one IS deployable.
-
-Every non-vision atom is orcs's — `proprio_terms`, `robot_motion_cmd_terms` —
-and every vision atom is `vibe.core.observation_cfgs`.
-Nothing is defined here that either already owns; what IS here is what perloco
-means by a query row.
+Two terms left the actor: the scan (swapped for pixels) and the root state
+(`robot_root_pos_env` is odometry, `robot_root_lin_vel_b` wants a state estimator). What
+remains is measurable on hardware; SONIC's proprio history carries whatever root estimate
+the base infers.
 """
 
 from __future__ import annotations
@@ -49,10 +36,8 @@ __all__ = [
     "adapter_stream_group", "attach_ext_obs",
 ]
 
-# perloco's task command IS the root twist — there is no object, no goal pose,
-# nothing else to aim the attention with. So `q_task_cmd` here is what repose
-# parks as `q_motion_cmd`, promoted: for terrain, "where am I going" is the
-# strongest available "where should I look".
+# The root twist is perloco's only command, so it is the task query: for terrain,
+# "where am I going" is the best available "where should I look".
 DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_proprio", CLS_GROUP)
 
 
@@ -66,34 +51,17 @@ class ObsCtx(_ScanCtx, CamSpec):
 # ---------------------------------------------------------------------------
 
 QUERY_GROUPS = {
-    # task command: the sys1 root twist, {v,w}_cmd_t. Time-varying, and the only
-    # command this task has. NOT uolm's bundle — the per-body contact schedule is
-    # derived from an object contact graph, and there is no object here.
+    # task command: the root-twist command {v, w}, time-varying
     "q_task_cmd": lambda c: _grp(robot_motion_cmd_terms(c.p)),
     # proprio feedback: where am I now (posture, stance)
     "q_proprio": lambda c: _grp(proprio_terms()),
-    # encoder global token — the one sanctioned global-pool row (see core).
+    # encoder global token — the one global-pool row (`cls_query_group`)
     CLS_GROUP: cls_query_group,
 }
 
 
-# ---------------------------------------------------------------------------
-# The named groups
-# ---------------------------------------------------------------------------
-
 def adapter_stream_group(c: ObsCtx) -> ObservationGroupCfg:
-    """The adapter's direct stream: sys1's root-twist command, and nothing else.
-
-    **Robot root state is GONE** (2026-08-06), which is the whole point of this
-    revision: `robot_root_pos_env` is odometry and `robot_root_lin_vel_b` needs a
-    state estimator, so neither exists on hardware. What is left is what sys1
-    emits — a command, exact on hardware because it is not sensed at all — plus
-    z. That makes the deployed input a function of (camera, proprio, command)
-    and nothing the sim privately knows.
-
-    The scan made root state look load-bearing (it was the odometry that placed
-    the rays); with the scan already gone, so is the reason.
-    """
+    """The adapter's direct stream: the root-twist command, exact on hardware (not sensed)."""
     return _grp(robot_motion_cmd_terms(c.p))
 
 
@@ -103,16 +71,14 @@ def attach_ext_obs(
     query_channels: tuple[str, ...] = DEFAULT_QUERY_GROUPS,
     ctx: ObsCtx | None = None,
 ) -> None:
-    """Rewire the obs into the sys0 extractor hierarchy (docs/infra/agents.md §3).
+    """Wire the extractor: `kv_tokens` + one group per query row; the adapter stream.
 
-      [base]      policy stream (untouched)                   -> tracks the motion
-      [adapter]   root-twist cmd + z                          -> corrects the base
-      [extractor] KV_TOKENS ⟨queried by⟩ query_channels -> z  -> task-relevant vision
+      [base]      policy stream (untouched)                  -> tracks the motion
+      [adapter]   root-twist command + z                     -> corrects the base
+      [extractor] kv_tokens ⟨queried by⟩ query_channels -> z
 
-    Command VALUES reach control through the adapter stream; the query only
-    steers *where to look* (`CrossAttentionExtractor` is pure pooling). No
-    `prediction_*` groups: `-Ext` is plain PPO, and a predictor is a train-time
-    entity that a target set makes task-specific.
+    Command values reach control through the adapter stream; a query only steers where
+    to look (the extractor pools, it never carries the query's value into z).
     """
     c = ctx or ObsCtx()
     cfg.observations[TOKEN_GROUP] = kv_tokens_group(c)

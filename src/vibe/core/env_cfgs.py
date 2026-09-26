@@ -75,28 +75,12 @@ def assert_play_is_clean(cfg: ManagerBasedRlEnvCfg, before: DomainState) -> None
 # ---------------------------------------------------------------------------
 
 FLOOR_RGBA = (0.6, 0.6, 0.6, 1.0)
-"""Nominal matte mid-grey floor, replacing mjlab's checkered groundplane.
+"""Nominal matte grey floor, replacing mjlab's checkered, reflective groundplane.
 
-Two things go, and the second is the one that is hard to find:
-
-  the CHECKER   A high-frequency pattern sampled at 112x63 ALIASES, and the
-                camera is head-mounted, so the moire it produces moves whenever
-                the robot does. That is synthetic motion in exactly the channel
-                a looming cue has to live in — worse than a missing texture,
-                because it is a confusing one. It also BEATS `mat_rgba`, so a
-                textured floor cannot be recoloured at all: killing it is what
-                makes `rand_terrain_color` visible on a plane. Killed at the
-                source (`texture=None`) rather than with the camera's
-                `use_textures` flag, which is a blunter instrument that flattens
-                every OTHER material in the scene too — including the object
-                textures uolm's roster is told apart by.
-  REFLECTANCE   mjlab's groundplane ships `reflectance=0.2`, and a reflective
-                MuJoCo plane renders a MIRRORED copy of anything above it. On
-                dodge that is a second, fake, converging ball in frame.
-
-0.6 is the nominal only — `rand_terrain_color` overwrites it per env. It sits
-clear of both robot materials (silver 0.7, black 0.2) so the limbs stay
-separable from the floor in the one env that draws it.
+The checker ALIASES at 112x63 (moiré that moves with the head) and beats `mat_rgba`, so a
+textured floor cannot be recoloured; a reflective plane mirrors a second, fake ball on dodge.
+Removed at the source (`texture=None`), not with the camera's `use_textures`, which would
+flatten every other material too. `rand_terrain_color` overwrites the colour per env.
 """
 
 
@@ -130,9 +114,8 @@ def apply_render_domain(
     `assert_play_is_clean` then has nothing to catch and stays honest.
 
     Light INTENSITY is not here and cannot be: mjwarp's batched `Model` carries
-    `light_{type,castshadow,active,pos,dir}` and no diffuse/ambient field, so
-    fcrl's "intensity 1000-4000" has no per-world equivalent. Direction is the
-    half that survives — and it is the half that moves shading and shadows.
+    `light_{type,castshadow,active,pos,dir}` and no diffuse/ambient field.
+    Direction is the half that survives, and it moves shading and shadows.
 
     `terrain_ground_rgba` forwards to `rand_terrain_color`: a task whose terrain
     has RAISED geometry passes its ground's nominal colour, and everything that
@@ -169,43 +152,12 @@ def apply_render_domain(
 # ---------------------------------------------------------------------------
 
 STAGE_RGBA = (0.30, 0.30, 0.32, 1.0)
-"""The play-only ground colour, shared by every vibe task. Cool slate.
+"""The play-only ground colour, shared by every vibe task: cool slate.
 
-**Measure the RENDER, never the nominal, and measure TWO things** — the robot
-against the floor AND the floor against its own cast shadow. One trajectory,
-four floors, repainted between renders so the panels are the same motion
-frame-for-frame (`az 135 / el -20 / d 3.5`, the framing a clip is cut at):
-
-    stage              floor L   clipped   robot dL   SHADOW dL
-    light grey 0.76      1.00       83%      0.00        0.51
-    slate 0.30 THIS      0.42        0%      0.42        0.22
-    graphite 0.18        0.25        0%      0.58        0.13
-    matte black 0.02     0.04        0%      0.80        0.02
-
-The two columns pull in OPPOSITE directions and that is the whole design:
-
-  a LIGHT floor rides above its nominal under the sun's ~1.2 gain and clips, so
-  it meets the G1's specular silver at the top of the range — 0.76 measured a
-  robot dL of exactly ZERO, i.e. the silhouette was carried by the shadow alone.
-  a BLACK floor wins the silhouette outright (0.80) and deletes the shadow
-  (0.02), which is the only cue that the robot STANDS on the floor rather than
-  floating in front of it; it also has no gradient left, so the ground stops
-  reading as a surface at all.
-
-Slate is the joint optimum, not a compromise: the darkest tone that still holds
-a visible shadow. Move it and re-measure BOTH columns — a silhouette number
-alone will happily walk you into a floating robot.
-
-Neighbours, one-constant swaps: graphite 0.18 (moodier, shadow at the edge of
-legibility) and off-white 0.94 (paper-native, blends into a white page, robot
-carried by shadow only).
-
-**What it costs:** play FPV feeds the frozen encoder, so a stage inside
-`GROUND_RGBAS` would guarantee an in-distribution eval floor. This one sits
-BETWEEN entries — an interpolation of what the encoder saw, never an
-extrapolation past it, which is what `test_stage_sits_inside_the_palette_span`
-holds. The task-object bar is untouched and still hard: 152 to the nearest cube
-face, 150 to the dodge ball.
+Chosen on the RENDER, for two things at once: the robot must separate from the floor
+(a light floor meets the G1's silver) and the floor must keep a visible cast shadow (a black
+floor deletes it, and the robot floats). Slate is the darkest tone that keeps the shadow. It
+sits inside the span of `GROUND_RGBAS`, so the frozen encoder sees an in-distribution floor.
 """
 
 
@@ -244,11 +196,9 @@ def apply_stage_render(
     """
     if not play:
         return
-    # The TEXTURE beats both rgba fields (docs/perception/render_domain.md §1),
-    # and a plane ships mjlab's CHECKER — so a per-world write alone paints a
-    # floor nobody sees. repose is where this bites: it never called
-    # `flat_floor` (the head cam's `use_textures=False` hid the checker from the
-    # FPV, and only from it), so the viewer and every TPV frame still drew it.
+    # The TEXTURE beats both rgba fields and a plane ships mjlab's CHECKER, so a
+    # per-world write alone paints a floor nobody sees. repose never calls
+    # `flat_floor` in training (its head cam turns textures off), so it is done here.
     if getattr(cfg.scene.terrain, "terrain_type", None) == "plane":
         flat_floor(cfg, rgba=rgba)
     cfg.events.pop("rand_terrain_color", None)
@@ -285,9 +235,8 @@ def apply_query_noise(
 class VibeEnvCfg(ManagerBasedRlEnvCfg):
     """mjlab's env cfg + the vision knobs that belong to a RUN, not to a task id.
 
-    A backbone is not a naming axis (`docs/infra/naming.md`: a one-valued axis is
-    not an axis) — it is a flag, so a bake-off is six lines of a manifest rather
-    than six registrations.
+    A backbone varies between runs of one task, so it is a flag, not a task-id
+    token (docs/tasks.md).
     """
 
     img_encoder: str | None = None

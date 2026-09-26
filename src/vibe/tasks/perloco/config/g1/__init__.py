@@ -1,6 +1,6 @@
 """Register the G1 perceptive-locomotion VISION tasks with mjlab.
 
-Naming: `Vibe-<Task>-<Source>-<Extero>[-<Suffix>]` (docs/infra/naming.md).
+Naming: `Vibe-<Task>-<Source>-<Extero>[-<Suffix>]` (docs/tasks.md).
 PerLoco carries no `<RobotMotionRew>` slot — it is motion tracking, and a
 one-valued axis is not an axis.
 
@@ -15,8 +15,7 @@ camera, because nothing else is free to move.
 
 Two sources, one obs layout: the vision swap does not depend on which terrain,
 so `observation_cfgs` and `agent_cfgs` are shared and only the orcs factory
-differs (docs/infra/naming.md — `<Source>` is in the id because provenance changes
-code, and here it changes orcs's code, not vibe's).
+differs.
 
 Registration needs staged terrain data (`scripts/setup/sync_data.sh omre grail`). Absent, it
 is SKIPPED, never raised — orcs's rule, and vibe inherits it so an incomplete

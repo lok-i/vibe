@@ -30,9 +30,8 @@ def adapt_sonic_ext_agent_cfg(
 
     Extractor-only (`-Ext`): the extractor is trained by PPO gradients alone, so
     this row answers "does a task gradient reach a vision encoder at all" before
-    any auxiliary objective is spent on the question. Requires the env cfg built
-    with `aux=True` (its token + query groups feed the extractor — the coupling
-    is group NAMES only, shared via `observation_cfgs`).
+    any auxiliary objective is spent on the question. The env's token + query
+    groups feed the extractor by NAME (`observation_cfgs`).
 
     TWO query rows here against repose's and uolm's three; the reason is in
     `observation_cfgs` and it is a property of the task, not a saving.
@@ -41,13 +40,11 @@ def adapt_sonic_ext_agent_cfg(
     rank 16, alpha 1.0 (scale 1/16), std 1.0 — because that is what the
     privileged twin trains at, and a delta against `Orcs-Dodge-AdaptSonic` is
     only the exteroception if every other knob matches. `**adapter_kw` forwards
-    to `adapt_sonic_agent_cfg`, so retuning is possible; retuning ONE row is the
-    mistake. If this row ever needs more authority than the twin, the ceiling
-    that binds is the twin's rank 20, not this row's 28 (`orcs.tasks.dodge`).
+    to `adapt_sonic_agent_cfg`, so retuning is possible; retuning ONE row of
+    the pair is the mistake.
     """
     cfg = adapt_sonic_agent_cfg(experiment_name, **adapter_kw)
-    # `stream_groups=()` — the adapter reads z and NOTHING else. Dodge has no
-    # sys1, so there is no command stream to name; the env drops `augmentation`
-    # for the same reason (`observation_cfgs.attach_ext_obs`).
+    # `stream_groups=()` — the adapter reads z and NOTHING else: dodge's command
+    # stream is constant, and the env drops `augmentation` (`attach_ext_obs`).
     attach_extractor(cfg, query_groups, extractor=extractor, stream_groups=())
     return cfg

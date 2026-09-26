@@ -5,12 +5,12 @@ VOF, RSI, terminations) lives in `orcs.tasks.uolm.mdp` — repose is the
 single-object, vision-carrying special case and adds only what is genuinely
 its own:
 
-  commands.py     ReposeMotionCommand — orientation-only success, color goal
+  commands.py     ReposeMotionCommand — orientation-only success, colour goal
   cube_faces.py   the 6-face / 24-symmetry geometry
-  observations.py color obs + the frozen vision encoder (`image_feature`)
+  observations.py colour obs
   rewards.py      up_face / up_color task kernels
-  events.py       the color-relabel render domain
-  metrics.py      camera projection + the object-in-FOV duty cycle
+  events.py       the face->colour permutation (the task channel)
+  metrics.py      re-export of `vibe.core.mdp.metrics`
 """
 
 from orcs.tasks.uolm.mdp import *  # noqa: F403

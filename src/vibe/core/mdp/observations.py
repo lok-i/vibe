@@ -43,7 +43,7 @@ class image_feature(ManagerTermBase):
       - each env-step's forward CACHED (`_FWD`), so a tokens-term + a cls-term over the
         same sensor+step reuse one pass (keyed on step AND the rgb buffer ptr, so a new
         render or a new step always recomputes — no stale reuse).
-    ``model_dtype`` ("float32" default | "float16" | "bfloat16") is the encoder
+    ``model_dtype`` ("float16" default | "float32" | "bfloat16") is the encoder
     COMPUTE dtype only — weights, norm tensors, and input all cast to it; the
     returned obs is always fp32, so downstream buffers/agents never change.
     """

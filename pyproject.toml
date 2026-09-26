@@ -9,12 +9,11 @@ license = "BSD-3-Clause"
 license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Lokesh Krishna", email = "lkrajan@usc.edu" }]
 dependencies = [
-    # ── active ─────────────────────────────────────────────────────────────────
     # The validated simulator stack, pinned exactly and in lockstep with orcs.
     # mjlab pins rsl-rl-lib with `==`, so a floor here resolves a newer mjlab that
     # rips out the rsl_rl fork; and 1.6 renders the skybox into sensor cameras,
     # which moves the head cam's input distribution out from under every trained
-    # vision checkpoint. Bump only together with orcs — see docs/infra/deps.md.
+    # vision checkpoint. Bump only together with orcs — see docs/setup.md.
     "mjlab==1.4.0",
     "mujoco==3.8.1",
     "mujoco-warp==3.8.1",
@@ -28,21 +27,8 @@ dependencies = [
     "einops",
     "omegaconf",
     "transformers==4.57.6",   # frozen vision backbones (vibe.encoders.zoo)
-    # NB: numpy/torch are guaranteed by mjlab; mocke + rsl_rl + orcs are git deps
-    # owned by deps.lock, never listed here.
-
-    # ── variants (uncomment and adapt) ─────────────────────────────────────────
-    # 1.  PyPI, latest compatible          "wandb>=0.17"
-    # 2.  PyPI, exact pin                  "numpy==1.26.4"
-    # 3.  PyPI, version range              "torch>=2.1.0,<2.4.0"
-    # 4.  PyPI, no constraint              "tqdm"
-    # 5.  Git, HEAD (not reproducible)     "pkg @ git+https://github.com/org/pkg.git"
-    # 6.  Git, commit SHA  ← preferred     "pkg @ git+https://github.com/org/pkg.git@a1b2c3d"
-    # 7.  Git, tag                         "pkg @ git+https://github.com/org/pkg.git@v1.4.0"
-    # 8.  Git, branch (moving target)      "pkg @ git+https://github.com/org/pkg.git@my-branch"
-    # 9.  Local editable sibling repo      "pkg"  +  pip install -e /path/to/pkg  (separately)
-    # 10. Embedded vendor copy             "pkg @ file:///${PWD}/vendor/pkg"
-    # note: variants 5-10 won't upload to PyPI — fine for research repos
+    # numpy/torch come with mjlab; mocke, rsl_rl and orcs are git deps owned by
+    # deps.lock, never listed here.
 ]
 
 [build-system]
@@ -56,10 +42,7 @@ where = ["src"]
 "vibe" = ["release.json"]
 "vibe.export.encoder" = ["*.yaml"]
 
-# mjlab auto-discovers tasks by importing this module at startup.
-# Format: <key> = "<python-module-to-import>"  (key is arbitrary, module is what gets imported)
-# Adding a package here triggers its __init__.py -> register_mjlab_task() calls.
-# Multi-package: add one line per package that registers tasks.
+# mjlab imports this module at startup, which registers every task.
 [project.entry-points."mjlab.tasks"]
 vibe = "vibe"
 

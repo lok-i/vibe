@@ -22,10 +22,8 @@ class ObjectCamProjection:
 
     THE camera geometry, once: object root pos → camera frame (parent body pose ∘ the
     sensor's fixed mount offset) → normalized image coords. `object_in_fov` is the
-    in-frustum indicator built on it; an offline representation eval reads `uv` to
-    ask *which image patch the
-    object falls in*, so attention can be scored against ground truth. One implementation
-    keeps the training metric and the offline read from drifting apart.
+    in-frustum indicator built on it; `uv` also says which image patch the object
+    falls in.
 
     `uv` is (B, 2) in [0, 1]², origin TOP-LEFT (image convention: v grows downward,
     camera-frame +y is up). Values outside [0, 1] mean outside the frustum; they stay
@@ -78,7 +76,7 @@ class object_in_fov(ManagerTermBase):
     frustum (``fovy`` + aspect-derived ``fovx``). Returns (B,) ∈ {0,1}; MetricsManager
     ``reduce="mean"`` reports the per-episode fraction (``Episode_Metrics/object_in_fov``),
     expected to RISE as active perception emerges (low+flat ⇒ the lever is camera aim/FOV,
-    not the extractor — docs/perception/encoders.md).
+    not the extractor).
     """
 
     def __init__(self, cfg, env):

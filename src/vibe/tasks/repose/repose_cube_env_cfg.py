@@ -58,28 +58,8 @@ def make_repose_cube_env_cfg(*, small_cube_table: bool = False) -> ManagerBasedR
     }
 
     rewards = {
-        # task layer = up-face only (repose truth is a 2-DOF constraint; the
-        # quat kernel over-constrains by task-irrelevant yaw). Quat pair kept
-        # below for A/B rollback — same keys, so the G1 layer's command
-        # re-pointing works for either.
-        # "object_goal": RewardTermCfg(
-        #     func=mdp.object_goal_ori_reward,
-        #     weight=1.0,
-        #     params={
-        #         "object_cfg": SceneEntityCfg("object"),
-        #         "command_name": "motion",
-        #         "std": 1.00,
-        #     },
-        # ),
-        # "success_bonus": RewardTermCfg(
-        #     func=mdp.orientation_success_bonus,
-        #     weight=10.0,
-        #     params={
-        #         "object_cfg": SceneEntityCfg("object"),
-        #         "command_name": "motion",
-        #         "threshold": 0.3,
-        #     },
-        # ),
+        # task layer = up-face only: repose truth is a 2-DOF constraint, and a
+        # quat kernel over-constrains by task-irrelevant yaw.
         "object_goal": RewardTermCfg(
             func=mdp.up_face_reward,
             weight=1.0,

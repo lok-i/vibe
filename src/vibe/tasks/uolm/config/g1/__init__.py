@@ -1,6 +1,6 @@
 """Register the G1 uni-object loco-manipulation VISION task with mjlab.
 
-Naming: `Vibe-<Task>-<Extero>[-<Suffix>]` (docs/infra/naming.md). Uolm carries
+Naming: `Vibe-<Task>-<Extero>[-<Suffix>]` (docs/tasks.md). Uolm carries
 no `<RobotMotionRew>` slot — orcs's uolm is motion tracking, and a one-valued
 axis is not an axis.
 

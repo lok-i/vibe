@@ -96,50 +96,28 @@ def _max_clip_len_steps(dataset_dir: str | list[str]) -> int:
 
 
 def _load_exclude_motions(path: str) -> tuple[str, ...]:
-    """Exclusion list from .json (list[str]) or .csv (motion_name column, else
-    first column). Entries: "<motion>" (whole folder) or "<motion>/<sampleX>".
+    """Exclusion list, a .json list[str] of "<motion>" or "<motion>/<sampleX>".
     Relative paths resolve against the repo root."""
+    import json
     from pathlib import Path
 
     p = Path(path)
     if not p.is_absolute():
         p = paths.VIBE_ROOT / p
-    if p.suffix == ".json":
-        import json
-        entries = json.loads(p.read_text())
-    elif p.suffix == ".csv":
-        import csv
-        with open(p, newline="") as fh:
-            rows = list(csv.DictReader(fh))
-        key = "motion_name" if rows and "motion_name" in rows[0] else None
-        entries = ([r[key] for r in rows] if key
-                   else [r for r, *_ in csv.reader(open(p))][1:])
-    else:
-        raise ValueError(f"exclude_motions_file must be .json or .csv: {p}")
+    entries = json.loads(p.read_text())
     assert all(isinstance(e, str) for e in entries), f"non-string entry in {p}"
     return tuple(dict.fromkeys(entries))  # dedupe, order-preserving
 
 
 # ---------------------------------------------------------------------------
-# Sim2real obs noise + render domain — hoisted, NOT redefined
+# Sim2real obs noise + render domain — shared, not redefined: the noise table is
+# `orcs.core.obs.OBS_NOISE`, the render domain `vibe.core.env_cfgs`.
 # ---------------------------------------------------------------------------
 
-# Both moved to the shared layer (2026-08-06) so the four task families carry
-# ONE domain rather than four that drift:
-#
-#   the noise TABLE     `orcs.core.obs.OBS_NOISE` — sensor noise is a property
-#                       of the robot, so orcs owns the numbers and stamps its
-#                       own `policy` stream inside its factories.
-#   the render domain   `vibe.core.env_cfgs.apply_render_domain` — camera mount,
-#                       sun angle, terrain palette.
-#
-# Repose is the REFERENCE row (it transferred), so nothing here changes value:
-# the hoisted definitions are the ones this file used to hold, and the groups
-# below are the ones it used to name.
 _NOISY_GROUPS = ("policy",) + QUERY_NOISY_GROUPS
 """Deployed streams ONLY. Deliberately excluded:
 
-    augmentation      sys1 COMMANDS, not sensed — exact on hardware
+    augmentation      the motion COMMAND, not sensed — exact on hardware
     critic            privileged, never deploys
     prediction_*      train-time predictor; noising its conditioning buys an
                       error floor and no transfer (the target is sim truth)
@@ -150,10 +128,8 @@ _NOISY_GROUPS = ("policy",) + QUERY_NOISY_GROUPS
 def apply_color_relabel(cfg: ManagerBasedRlEnvCfg) -> ManagerBasedRlEnvCfg:
     """Color-relabel render domain: per-env face->color perm + terrain palette.
 
-    The env-side half of the imgfeat color channel (events + flat render), split
-    out so an offline bench gets the SAME
-    domain without re-implementing it. Startup mode = one perm per env for the
-    whole run, so each env has a consistent commanded color
+    The env-side half of the vision rows' colour channel. Startup mode = one perm per
+    env for the whole run, so each env has a consistent commanded colour
     (`ReposeMotionCommand.goal_color_idx`).
     """
     cfg.events["rand_face_colors"] = EventTermCfg(
@@ -220,13 +196,12 @@ def g1_repose_cube_env_cfg(
                  docstring).
         aux:     Rewire obs for the extractor/PPOAux pipeline: a `kv_tokens` dict
                  group + one query group per active channel + the
-                 `prediction_{target,conditioning}` side-inputs (obs-group wiring
-                 contract, docs/infra/agents.md §3).
+                 `prediction_{target,conditioning}` side-inputs
+                 (docs/architecture.md).
         play:    Play-mode overrides (no noise, no anneal, relaxed terminations).
         dataset_dir: Multi-clip dataset root(s) (default: the repose cube clips).
-        exclude_motions_file: .json/.csv clip exclusion list (see
-                 _load_exclude_motions) — e.g. the W0 kill list of unlearnable
-                 clips; entries are "<motion>" or "<motion>/<sampleX>".
+        exclude_motions_file: .json clip exclusion list (`_load_exclude_motions`),
+                 e.g. the unlearnable-clip list the tasks register with.
         num_steps_per_env: PPO rollout length (for PolicyUpdateCounter).
     """
     if aux:
@@ -246,7 +221,6 @@ def g1_repose_cube_env_cfg(
         sensors.GROUND_CONTACT_SENSOR_NAME)
 
     ds = dataset_dir or _G1_REPOSE_DATASETS[scene]
-    obj = SceneEntityCfg("object")  # noqa: F841 — VOF params below (commented)
     _p = {"command_name": "motion"}
 
     # ── the motion command (the base cfg ships none) ──
@@ -299,15 +273,8 @@ def g1_repose_cube_env_cfg(
         is_global_time=True,
         params={"num_steps_per_env": num_steps_per_env},
     )
-    # VOF (decaying PD wrench toward the demo ref) is available from orcs but
-    # deliberately NOT wired here — repose's cube is light enough that the
-    # curriculum never paid for itself. Re-enable by uncommenting:
-    # cfg.events["virtual_object_force"] = EventTermCfg(
-    #     func=mdp.VirtualObjectForceCurriculum, mode="interval",
-    #     interval_range_s=(0.0, 0.0),
-    #     params={"natural_frequency": 12.0, "terminal_scale": 1e-4,
-    #             "decay_mode": "exponential", "decay_by_policy_iterations": 10_000,
-    #             "object_cfg": obj, **_p})
+    # No VOF (orcs's decaying PD wrench toward the demo): the cube is light enough
+    # that the curriculum never paid for itself.
 
     # ── robot-motion rewards: track the demo trajectories ──
     # The task layer comes from the base dict (object_goal + success_bonus +
@@ -340,8 +307,8 @@ def g1_repose_cube_env_cfg(
         "object_ori": RewardTermCfg(
             func=mdp.object_ori_tracking_reward,
             weight=1.0, params={**_p, "std": 0.4}),
-        # SUGAR contact consistency: per-body binary match vs demo, mean
-        # over graph nodes (partial credit)
+        # contact consistency: per-body binary match vs the demo, mean over
+        # graph nodes (partial credit)
         "contact_consistency": RewardTermCfg(
             func=mdp.object_contact_consistency,
             weight=1.0, params={**_p,
@@ -358,8 +325,8 @@ def g1_repose_cube_env_cfg(
     if aux:
         oc.attach_aux_obs(cfg)
 
-    # ── vision ⇒ color task channel: break orientation<->color, goal reaches
-    #    the actor as COLOR only (roadmap-3 slots text commands in here) ──
+    # ── vision ⇒ colour task channel: break orientation<->colour, the goal
+    #    reaches the actor as COLOUR only ──
     if vision:
         apply_color_relabel(cfg)
         # task rewards -> the color-channel pair (no goal quat; keys stay stable
@@ -419,8 +386,6 @@ def g1_repose_cube_env_cfg(
 
     # INVARIANT: play overrides are LAST. They SUBTRACT from the assembled
     # training domain, so anything wired below this line leaks into play/eval.
-    # (Was above `apply_robustness` until 2026-08-01, which silently handed
-    # every eval rollout the full DR domain back.)
     if play:
         _play_overrides(cfg)
         # AFTER them: `_play_overrides` keeps `rand_terrain_color` alive (the

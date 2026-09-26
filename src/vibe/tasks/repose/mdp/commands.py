@@ -1,40 +1,29 @@
-"""Reorientation command — samples random SO(3) targets, tracks angular error."""
+"""ReposeMotionCommand — orcs's ObjectMotionCommand, specialized to the colored cube.
+
+Success is orientation-only (the up-face COLOR, read through the per-env face->color
+perm), and the goal is drawn as a floating colored badge.
+"""
 
 from __future__ import annotations
 
 import itertools
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import torch
 from mjlab.envs import ManagerBasedRlEnv
-from mjlab.managers.command_manager import CommandTerm, CommandTermCfg
-from mjlab.utils.lab_api.math import (
-    matrix_from_quat,
-    quat_error_magnitude,
-    quat_from_matrix,
-    quat_mul,
-    sample_uniform,
-)
-from mjlab.viewer.debug_visualizer import DebugVisualizer
+from mjlab.utils.lab_api.math import quat_from_matrix, quat_mul
+from orcs.tasks.uolm.mdp.commands import ObjectMotionCommand, ObjectMotionCommandCfg
 
-from vibe.assets.repose import (
-    BIG_CUBE_HALF_EXTENT,
-    FACE_COLORS,
-    TABLE_CENTER_HEIGHT,
-    face_geoms,
+from vibe.assets.repose import BIG_CUBE_HALF_EXTENT, FACE_COLORS, TABLE_CENTER_HEIGHT
+from vibe.tasks.repose.mdp.cube_faces import (
+    color_tilt_error,
+    face_color_names,
+    face_colors,
+    up_face_idx,
 )
 
-__all__ = ["ReorientationCommandCfg", "ReorientationCommand"]
-
-
-def _random_quaternions(n: int, device: torch.device) -> torch.Tensor:
-    """Uniform random quaternions on SO(3). Convention: (w, x, y, z)."""
-    q = torch.randn(n, 4, device=device)
-    q = q / q.norm(dim=-1, keepdim=True)
-    q[q[:, 0] < 0] *= -1
-    return q
+__all__ = ["ReposeMotionCommand", "ReposeMotionCommandCfg"]
 
 
 def _cube_symmetry_quats(device: torch.device) -> torch.Tensor:
@@ -49,178 +38,6 @@ def _cube_symmetry_quats(device: torch.device) -> torch.Tensor:
                 mats.append(m)
     return quat_from_matrix(torch.stack(mats).to(device))
 
-
-def _cube_face_up_quats(device: torch.device) -> torch.Tensor:
-    """The 6 canonical face-up cube orientations -> (6, 4)."""
-    q24 = _cube_symmetry_quats(device)
-    rot = matrix_from_quat(q24)
-    up_axis = torch.round(rot[:, 2, :]).to(torch.int64)
-    trace = rot.diagonal(dim1=-2, dim2=-1).sum(-1)
-    best: dict[tuple, int] = {}
-    for i in range(q24.shape[0]):
-        k = tuple(up_axis[i].tolist())
-        if k not in best or trace[i] > trace[best[k]]:
-            best[k] = i
-    idx = torch.tensor(sorted(best.values()), device=device)
-    return q24[idx]
-
-
-_GOAL_SETS = {"24": _cube_symmetry_quats, "6": _cube_face_up_quats}
-
-
-@dataclass(kw_only=True)
-class ReorientationCommandCfg(CommandTermCfg):
-    """Samples random target orientations for an object."""
-
-    entity_name: str
-    success_threshold: float = 0.2
-    resampling_time_range: tuple[float, float] = (8.0, 12.0)
-    debug_vis: bool = False
-
-    goal_mode: str = "all"
-    """'all' -> continuous SO(3), '24' -> octahedral, '6' -> face-up."""
-
-    viz_height: float = 1.5
-
-    @dataclass
-    class ObjectSpawnCfg:
-        """Annulus drop: position on a ground ring, random SO(3) orientation."""
-        radius: tuple[float, float] = (0.6, 1.2)
-        height: float = 0.30
-        randomize_orientation: bool = True
-
-    object_spawn: ObjectSpawnCfg | None = field(default_factory=ObjectSpawnCfg)
-
-    def build(self, env: ManagerBasedRlEnv) -> ReorientationCommand:
-        return ReorientationCommand(self, env)
-
-
-class ReorientationCommand(CommandTerm):
-    cfg: ReorientationCommandCfg
-
-    def __init__(self, cfg: ReorientationCommandCfg, env: ManagerBasedRlEnv):
-        super().__init__(cfg, env)
-        self.object = env.scene[cfg.entity_name]
-        self.target_quat = torch.zeros(self.num_envs, 4, device=self.device)
-        self.target_quat[:, 0] = 1.0
-
-        self.metrics["orientation_error"] = torch.zeros(self.num_envs, device=self.device)
-        self.metrics["at_goal"] = torch.zeros(self.num_envs, device=self.device)
-        self.metrics["episode_success"] = torch.zeros(self.num_envs, device=self.device)
-
-        if cfg.goal_mode not in ("all", "24", "6"):
-            raise ValueError(f"goal_mode must be 'all'|'24'|'6', got {cfg.goal_mode!r}")
-        self._goal_set = (
-            _GOAL_SETS[cfg.goal_mode](self.device) if cfg.goal_mode != "all" else None
-        )
-
-    @property
-    def command(self) -> torch.Tensor:
-        return self.target_quat
-
-    def reset(self, env_ids):
-        if self.cfg.object_spawn is not None:
-            self._scatter_object(self.cfg.object_spawn, env_ids)
-        return super().reset(env_ids)
-
-    def _scatter_object(
-        self, spawn: ReorientationCommandCfg.ObjectSpawnCfg, env_ids: torch.Tensor
-    ) -> None:
-        if env_ids is None or len(env_ids) == 0:
-            return
-        n = len(env_ids)
-        r = sample_uniform(spawn.radius[0], spawn.radius[1], n, self.device)
-        theta = sample_uniform(0.0, 2.0 * math.pi, n, self.device)
-        pos = self._env.scene.env_origins[env_ids].clone()
-        pos[:, 0] += r * torch.cos(theta)
-        pos[:, 1] += r * torch.sin(theta)
-        pos[:, 2] += spawn.height
-        if spawn.randomize_orientation:
-            quat = _random_quaternions(n, self.device)
-        else:
-            quat = self.target_quat.new_zeros(n, 4)
-            quat[:, 0] = 1.0
-        state = torch.cat([pos, quat, torch.zeros(n, 6, device=self.device)], dim=-1)
-        self.object.write_root_state_to_sim(state, env_ids=env_ids)
-
-    def _update_metrics(self) -> None:
-        err = quat_error_magnitude(self.object.data.root_link_quat_w, self.target_quat)
-        at_goal = (err < self.cfg.success_threshold).float()
-        self.metrics["orientation_error"] = err
-        self.metrics["at_goal"] = at_goal
-        self.metrics["episode_success"] = torch.maximum(
-            self.metrics["episode_success"], at_goal
-        )
-
-    def compute_success(self) -> torch.Tensor:
-        return self.metrics["orientation_error"] < self.cfg.success_threshold
-
-    def _resample_command(self, env_ids: torch.Tensor) -> None:
-        if self._goal_set is not None:
-            idx = torch.randint(self._goal_set.shape[0], (len(env_ids),), device=self.device)
-            self.target_quat[env_ids] = self._goal_set[idx]
-        else:
-            self.target_quat[env_ids] = _random_quaternions(len(env_ids), self.device)
-        self.metrics["episode_success"][env_ids] = 0.0
-
-    def _update_command(self) -> None:
-        pass
-
-    def _debug_vis_impl(self, visualizer: DebugVisualizer) -> None:
-        env_indices = visualizer.get_env_indices(self.num_envs)
-        if not env_indices:
-            return
-
-        face_shells = face_geoms(BIG_CUBE_HALF_EXTENT)
-
-        for batch in env_indices:
-            origin = self._env.scene.env_origins[batch].cpu().numpy()
-            center = origin + np.array([0.0, 0.0, self.cfg.viz_height])
-
-            quat = self.target_quat[batch]
-            rot = matrix_from_quat(quat).cpu().numpy()
-
-            for i, ((fpos, fsize), rgba) in enumerate(
-                zip(face_shells, FACE_COLORS, strict=True)
-            ):
-                face_center = center + rot @ np.asarray(fpos, dtype=np.float64)
-                visualizer.add_box(
-                    center=face_center,
-                    size=np.asarray(fsize, dtype=np.float64),
-                    mat=rot,
-                    color=rgba,
-                    label=f"goal_face_{i}_{batch}",
-                )
-
-            visualizer.add_frame(
-                position=center,
-                rotation_matrix=rot,
-                scale=2.0 * float(face_shells[0][1][1]),
-                label=f"goal_frame_{batch}",
-                axis_radius=0.003,
-            )
-
-
-# ---------------------------------------------------------------------------
-# ReposeMotionCommand — the single-object (cube) special case of
-# ObjectMotionCommand: success is orientation-only and the goal is shown
-# as a floating colored-cube marker (faces match the task cube's colors).
-# ---------------------------------------------------------------------------
-
-from dataclasses import dataclass as _dataclass  # noqa: E402
-
-from orcs.tasks.uolm.mdp.commands import (  # noqa: E402
-    ObjectMotionCommand,
-    ObjectMotionCommandCfg,
-)
-
-from vibe.tasks.repose.mdp.cube_faces import (  # noqa: E402
-    color_tilt_error,
-    face_color_names,
-    face_colors,
-    face_normals,
-    up_face_idx,
-)
 
 _VIZ_HALF = 0.15
 _VIZ_SKIN = 0.004
@@ -350,16 +167,6 @@ class ReposeMotionCommand(ObjectMotionCommand):
         return self._goal_up_face_idx
 
     @property
-    def goal_up_face_normal_obj(self) -> torch.Tensor:
-        """Goal up-face outward normal in object frame -> (B, 3)."""
-        return face_normals(self.device)[self._goal_up_face_idx]
-
-    @property
-    def goal_up_face_color(self) -> torch.Tensor:
-        """Goal up-face rgba -> (B, 4)."""
-        return face_colors(self.device)[self._goal_up_face_idx]
-
-    @property
     def goal_color_idx(self) -> torch.Tensor:
         """Goal COLOR idx under the per-env face->color remap -> (B,) long.
 
@@ -401,8 +208,7 @@ class ReposeMotionCommand(ObjectMotionCommand):
         self.metrics["at_goal_color"] = at_goal_color
         # ANYTIME success. CommandTerm.reset logs mean(metric[env_ids]) AT the
         # reset step, so `at_goal_color` is a TERMINAL-step rate; this running
-        # max is its any-frame counterpart (the offline eval's headline number,
-        # and the axis on which train and eval ranked runs differently).
+        # max is its any-frame counterpart.
         self.metrics["at_goal_color_ever"] = torch.maximum(
             self.metrics["at_goal_color_ever"], at_goal_color)
         self._refresh_goal_color_gui()
@@ -468,7 +274,7 @@ class ReposeMotionCommand(ObjectMotionCommand):
         )
 
 
-@_dataclass(kw_only=True)
+@dataclass(kw_only=True)
 class ReposeMotionCommandCfg(ObjectMotionCommandCfg):
     """ObjectMotionCommandCfg + repose viz/success specialization."""
 

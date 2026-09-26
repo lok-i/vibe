@@ -1,19 +1,11 @@
-"""observation_cfgs.py — THE vibe signal library.
+"""observation_cfgs.py — repose's obs groups (docs/architecture.md).
 
-One place for every vibe-owned observation group + the atomic term bundles they
-share, so an experiment is a re-pick of groups, never a re-plumb. The groups read
-as the sys0 hierarchy (docs/perception/encoders.md):
+    [base]      policy + tokenizer streams           — mocke (frozen SONIC contract)
+    [adapter]   the motion command + z               — `adapter_stream_group`
+    [extractor] kv_tokens ⟨queried by⟩ QUERY_GROUPS -> z
 
-    [base]      policy stream (robot-motion-cmd + state)      — mocke WBC contract
-    [adapter]   ADAPTER_STREAM (robot-motion-cmd) + z          — this file
-    [extractor] KV_TOKENS  ⟨queried by⟩  QUERY_GROUPS -> z     — this file
-
-The frozen-base obs (policy / tokenizer streams) live in mocke and the privileged
-object-kinematics groups in orcs (dependency direction: vibe imports both, never
-the reverse); everything VISION — the part that is vibe's reason to exist — is
-here. DRY is load-bearing: `robot_motion_cmd_terms` feeds BOTH
-the adapter stream AND the `q_motion_cmd` query (one signal, two roles, one def);
-`proprio_terms` feeds BOTH `q_proprio` AND the aux `prediction_conditioning`.
+Signal atoms (proprio, motion command, object state) are orcs's and vision atoms are
+`vibe.core.observation_cfgs`; what is repose's is its query rows and its aux target.
 """
 
 from __future__ import annotations
@@ -50,12 +42,6 @@ from vibe.core.observation_cfgs import (
 )
 from vibe.tasks.repose import mdp
 
-# The signal ATOMS (proprio, robot-motion-cmd, object state) are orcs's — one
-# definition, so a change to what "proprio" means reaches the privileged task and
-# the vision task together. The VISION atoms (encoder choice, token group naming,
-# the token/cls terms) are `vibe.core.observation_cfgs` — shared with every other
-# vibe task, so a backbone swap reaches them together. What is left here, and only
-# here, is what repose means by a query row and a prediction target.
 __all__ = [
     "IMG_ENCODER", "IMG_DTYPE", "TOKEN_GROUP", "TOKEN_TERMS", "CLS_GROUP",
     "CAMERA_GROUP", "DEFAULT_QUERY_GROUPS", "QUERY_GROUPS", "ObsCtx",
@@ -67,13 +53,6 @@ __all__ = [
     "vision_augmentation_group", "attach_aux_obs",
 ]
 
-# BACKBONE SWAP is TWO coupled lines and they are NOT both here: `IMG_ENCODER`
-# lives in `vibe.core.observation_cfgs`, `DEFAULT_QUERY_GROUPS` below is the
-# other half (q_cls belongs to a CLIP-family CLS only). Swap them as a pair or
-# the extractor spends an attention row on an untrained token.
-
-# DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_motion_cmd", "q_proprio")
-# DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_motion_cmd", "q_proprio", CLS_GROUP)
 DEFAULT_QUERY_GROUPS = ("q_task_cmd", "q_proprio", CLS_GROUP)
 
 
@@ -87,14 +66,14 @@ class ObsCtx(_ObjKinCtx, CamSpec):
 # ---------------------------------------------------------------------------
 
 QUERY_GROUPS = {
-    # task command: what to achieve (static/episode) — becomes LANGUAGE later (swap this def)
+    # task command, fixed per episode. The vision rows swap the goal quat for the goal
+    # COLOUR one-hot (`env_cfgs`), which is what the actor actually receives.
     "q_task_cmd": lambda c: _grp({"object_goal_ori": _T(mdp.object_goal_ori_mat6d, c.p)}),
-    # robot-motion command: what motion now (time-varying) — the strongest "where to look" cue
+    # the motion command; off by default — its value reaches the adapter stream
     "q_motion_cmd": lambda c: _grp(robot_motion_cmd_terms(c.p)),
     # proprio feedback: where am I now (posture, hands)
     "q_proprio": lambda c: _grp(proprio_terms()),
-    # encoder global token: meaningful for CLIP/TinyCLIP (Theia CLS ~ noise). Defined
-    # always, but OFF by default — only in DEFAULT_QUERY_GROUPS on the [CLIP] branch.
+    # encoder global token — the one global-pool row (`cls_query_group`), on by default
     CLS_GROUP: cls_query_group,
 }
 
@@ -104,22 +83,19 @@ QUERY_GROUPS = {
 # ---------------------------------------------------------------------------
 
 def adapter_stream_group(c: ObsCtx) -> ObservationGroupCfg:
-    """Adapter's direct stream: robot-motion-cmd VALUE (sys0 dynamics signal).
+    """The adapter's direct stream: the motion command's VALUE.
 
-    Same terms as `q_motion_cmd` — the query decides *where to look*, this stream
-    carries the command *value* the adapter acts on."""
+    Same terms as `q_motion_cmd`: a query decides where to look, this stream carries
+    the value the adapter acts on."""
     return _grp(robot_motion_cmd_terms(c.p))
 
 
 def objkin_augmentation_group(c: _ObjKinCtx) -> ObservationGroupCfg:
-    """orcs's adapter stream, pinned to the BASE-frame, identity-free layout.
+    """orcs's adapter stream in the BASE frame, without object identity.
 
-    uolm moved its augmentation to env frame + object_id (2026-08-01) — right
-    there, wrong here. In repose this group is the privileged TWIN of
-    `imgfeat_augmentation_group`: the two must differ in exactly one thing, the
-    object-state pair, or the ObjKin-vs-ImgFeat comparison stops being
-    controlled. Odometry and object identity have no image-side twin to swap
-    against, and repose's roster is one cube, so both are excluded here.
+    The privileged twin of `vision_augmentation_group`: the two differ only in the
+    object-state pair. Odometry and identity have no image-side twin, and repose's
+    roster is one cube, so both are left out.
     """
     return _orcs_augmentation_group(c, frame="base", identity=False)
 
@@ -145,8 +121,7 @@ def vision_augmentation_group(c: ObsCtx, *, feat: bool = True) -> ObservationGro
     """The adapter's stream with VISION in place of object kinematics.
 
     Term-for-term `objkin_augmentation_group` with the object-state pair swapped
-    for encoder features — same goal + sys1 command feedforward, so the two
-    exteroception modes differ in exactly one thing, which is the experiment.
+    for encoder features: same goal, same motion command.
 
     `feat=False` is ImgRgb: pixels reach the actor through the `camera` group
     instead, so both vision rows share this stream term for term. Flat when
@@ -155,7 +130,6 @@ def vision_augmentation_group(c: ObsCtx, *, feat: bool = True) -> ObservationGro
     """
     return _grp({
         **({"feat": img_flat_term(c.sensor, c.model, c.model_dtype)} if feat else {}),
-        # "base_lin_vel": _T(mdp.base_lin_vel),  #NOTE (lok-i) 1Aug2026: found insensitive
         **object_goal_terms(c.p),
         **robot_motion_cmd_terms(c.p),
     })
@@ -166,17 +140,14 @@ def attach_aux_obs(
     *,
     query_channels: tuple[str, ...] = DEFAULT_QUERY_GROUPS,
 ) -> None:
-    """Rewire imgfeat obs into the sys0 extractor hierarchy (docs/perception/encoders.md).
+    """Wire the extractor + PPOAux groups onto an imgfeat cfg.
 
-    Pure assembly — every signal comes from the groups above:
+      [base]      policy stream (untouched)                  -> tracks the motion
+      [adapter]   motion command + z                         -> corrects the base
+      [extractor] kv_tokens ⟨queried by⟩ query_channels -> z
+      [aux]       prediction_target · prediction_conditioning (train only)
 
-      [base]      policy stream (untouched)                      -> tracks the motion
-      [adapter]   ADAPTER_STREAM (robot-motion-cmd) + z          -> corrects the base
-      [extractor] KV_TOKENS  ⟨queried by⟩  query_channels -> z   -> task-relevant vision
-
-    The adapter reads z ONLY for task/vision signal; robot-motion-cmd reaches it
-    directly (its VALUE, not just a query). The goal is query-only
-    (vision-grounded). `query_channels` selects the active rows.
+    The goal becomes query-only. `query_channels` selects the active rows.
     """
     feat = cfg.observations["augmentation"].terms["feat"]  # inherit sensor + encoder
     ctx = ObsCtx(sensor=feat.params["sensor_name"], model=feat.params["model_name"],
@@ -186,7 +157,7 @@ def attach_aux_obs(
     cfg.observations[TOKEN_GROUP] = kv_tokens_group(ctx)
     for name in query_channels:
         cfg.observations[name] = QUERY_GROUPS[name](ctx)
-    # adapter stream: robot-motion-cmd value (replaces the vision/goal-laden aug)
+    # adapter stream: the motion command (replaces the flat-feature stream)
     cfg.observations["augmentation"] = adapter_stream_group(ctx)
     # aux predictor groups
     cfg.observations["prediction_target"] = prediction_target_group(ctx)

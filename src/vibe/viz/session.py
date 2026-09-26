@@ -13,7 +13,9 @@ from pathlib import Path
 
 
 def play_context() -> tuple[str | None, str | None, str | None]:
-    """(task, checkpoint_file, agent) stashed by the play patch; all None off-play."""
+    """(task, checkpoint_file, agent) stashed by the play patch; all None off-play.
+
+    `agent` is the one asked for, resolved: `auto` -> initial|trained, `release` kept."""
     try:
         play = importlib.import_module("mjlab.scripts.play")
     except Exception:  # noqa: BLE001
@@ -21,16 +23,19 @@ def play_context() -> tuple[str | None, str | None, str | None]:
     ctx = getattr(play, "_vibe_play_ctx", None)
     if ctx is None:
         return None, None, None
-    task, cfg = ctx
-    return task, getattr(cfg, "checkpoint_file", None), getattr(cfg, "agent", None)
+    task, cfg, agent = ctx
+    return task, getattr(cfg, "checkpoint_file", None), agent
 
 
 def resolve_out_root() -> tuple[Path, str]:
-    """(folder, label) for this session's clips — the checkpoint's own dir when there is one."""
+    """(folder, label) for this session's clips — the checkpoint's own dir when there is one.
+
+    A released checkpoint is the exception: its dir is the download cache, so its clips
+    go to `videos/<task>/release/` instead."""
     if (env_dir := os.environ.get("VIBE_REC_DIR")):
         return Path(env_dir), "VIBE_REC_DIR"
     task, ckpt, agent = play_context()
-    if ckpt is not None:
+    if ckpt is not None and agent != "release":
         return Path(ckpt).parent / "videos" / Path(ckpt).stem, "checkpoint dir"
     return Path("videos") / (task or "unknown") / (agent or "agent"), "repo videos/"
 

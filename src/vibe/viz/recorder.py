@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import threading
 from dataclasses import asdict
 from pathlib import Path
 
 import mediapy as media
+import mujoco
 import numpy as np
 import viser
 from mjlab.viewer.offscreen_renderer import OffscreenRenderer
@@ -24,6 +26,7 @@ from vibe.viz.session import play_context, resolve_out_root
 
 _RES = {"1920x1080": (1920, 1080), "1280x720": (1280, 720), "2560x1440": (2560, 1440)}
 _MARGIN, _GAP, _BORDER = 12, 14, 2
+_EPISODE = re.compile(r"episode_(\d+)\.mp4")
 
 
 def _bordered(img: np.ndarray) -> np.ndarray:
@@ -62,6 +65,7 @@ class TakeRecorder:
         self._writers: dict[str, media.VideoWriter] = {}
         self._recording = self._armed = False
         self._episode = 0
+        self._clips = 0  # this take's, not the folder's
         self._frames = 0
         self._active: tuple[str, ...] = ()
         self._out: Path | None = None
@@ -106,6 +110,7 @@ class TakeRecorder:
         self._out = self._session_dir()
         self._out.mkdir(parents=True, exist_ok=True)
         self._episode = self._next_index()
+        self._clips = 0
         # Freeze the pane set for the whole take: a panel that appears mid-clip
         # would otherwise grow an inset halfway through the film.
         idx = self._env_idx()
@@ -138,7 +143,7 @@ class TakeRecorder:
         self._pending_build = None
         self._stale = True
         self._rec_btn.visible, self._stop_btn.visible = True, False
-        self._report(f"stopped · {self._episode} clip(s) in `{self._out}`")
+        self._report(f"stopped · {self._clips} clip(s) in `{self._out}`")
 
     def _roll_hint(self) -> str:
         return " · **press ▶ to roll**" if (self._paused_fn and self._paused_fn()) else ""
@@ -167,7 +172,9 @@ class TakeRecorder:
 
             traceback.print_exc()
             self.stop()
-            self._report(f"**recording failed** — {type(exc).__name__}: {exc}")
+            hint = (" · no display: relaunch with `MUJOCO_GL=egl`"
+                    if isinstance(exc, mujoco.FatalError) else "")
+            self._report(f"**recording failed** — {type(exc).__name__}: {exc}{hint}")
 
     # Frame production.
 
@@ -243,6 +250,7 @@ class TakeRecorder:
                 wr.__enter__()
                 self._writers[name] = wr
         self._recording, self._frames = True, 0
+        self._clips += 1
         self._report(f"**● REC** episode {self._episode:02d}")
 
     def _end_episode(self) -> None:
@@ -263,7 +271,8 @@ class TakeRecorder:
 
     def _next_index(self) -> int:
         assert self._out is not None
-        used = [int(p.stem.split("_")[1]) for p in self._out.glob("episode_[0-9][0-9].mp4")]
+        used = [int(m[1]) for p in self._out.glob("episode_*.mp4")
+                if (m := _EPISODE.fullmatch(p.name))]
         return max(used) + 1 if used else 0
 
     def _session_dir(self) -> Path:

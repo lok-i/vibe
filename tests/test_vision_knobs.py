@@ -129,7 +129,7 @@ def test_drop_query_rows_accepts_comma_or_space():
 
 def test_drop_query_rows_rejects_a_row_the_task_does_not_have():
     rl = load_rl_cfg(TASK)
-    rl.drop_query_rows = "q_motion_cmd"  # defined, but PARKED for this task
+    rl.drop_query_rows = "q_motion_cmd"  # defined, but not a default row here
     with pytest.raises(AssertionError, match="q_motion_cmd"):
         _rebuild(rl)
 
