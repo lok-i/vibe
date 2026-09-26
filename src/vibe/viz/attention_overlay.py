@@ -9,6 +9,7 @@ group, labelled by the extractor's `query_labels`.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from collections import deque
 
@@ -40,7 +41,10 @@ class AttnCameraPanel:
     the queries can be read against each other on one shared scale.
     """
 
-    def __init__(self, server: viser.ViserServer, sensor, extractor, display_scale: int = 3) -> None:
+    def __init__(
+        self, server: viser.ViserServer, sensor, extractor, display_scale: int = 3,
+        order: float | None = None,
+    ) -> None:
         self._server = server
         self._sensor = sensor
         self._tap = extractor
@@ -55,7 +59,7 @@ class AttnCameraPanel:
         self._x = np.arange(-_HISTORY + 1, 1, dtype=np.float64)
 
         blank = np.zeros((h * display_scale, w * display_scale, 3), dtype=np.uint8)
-        with server.gui.add_folder("Attention"):
+        with server.gui.add_folder("Attention", order=order):
             self._query = server.gui.add_dropdown(
                 "Query", options=(*self._labels, "mean", "max"), initial_value=self._labels[0]
             )
@@ -220,8 +224,22 @@ class AttnViserPlayViewer(ViserPlayViewer):
         if tap is None or tap.last_attn is None:
             return
         if self._attn_panel is None:
-            self._attn_panel = AttnCameraPanel(self._server, self._attn_sensor, tap)
+            tab, order = self._above_info()
+            with tab:
+                self._attn_panel = AttnCameraPanel(self._server, self._attn_sensor, tap, order=order)
         self._attn_panel.update(tap, self._scene.env_idx)
+
+    def _above_info(self):
+        """(Controls tab, an order just above its Info folder), so Attention is the tab's
+        first box. mjlab keeps no handle on either: both are reached from its Info
+        html through viser's container registry. Falls back to the root, last."""
+        try:
+            gui = self._server.gui
+            info = gui._container_handle_from_uuid[self._status_html._impl.parent_container_id]
+            tab = gui._container_handle_from_uuid[info._impl.parent_container_id]
+            return tab, info.order - 0.5
+        except (AttributeError, KeyError):
+            return contextlib.nullcontext(), None
 
     def close(self) -> None:
         self._recorder.cleanup()
