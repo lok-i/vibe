@@ -22,7 +22,7 @@ bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
 source .venv/bin/activate
 ```
 
-modes, dependencies, failure modes: [docs/setup.md](docs/setup.md).
+data modes, dependencies, troubleshooting: [docs/setup.md](docs/setup.md).
 
 ## usage
 
