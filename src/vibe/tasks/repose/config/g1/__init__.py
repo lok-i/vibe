@@ -20,9 +20,15 @@ extractor layout):
   -ImgFeat-Lfd  latent FD vs EMA (PPOAux, SSL)
 
 The privileged baselines for the other families live in orcs (`Orcs-*-AdaptSonic`).
+
+Missing data skips a row instead of failing `import vibe` (orcs's `register_all` rule; repose
+registers directly because its rows carry `runner_cls`):
+
+    python -c "import mjlab, vibe; print(vibe.tasks.repose.config.g1.SKIP_REASON)"
 """
 
 from mjlab.tasks.registry import register_mjlab_task
+from orcs.core.registry import MISSING_DATA
 
 from vibe.export.agent.case import register as register_export_case
 from vibe.tasks.repose.config.g1.agent_cfgs import (
@@ -39,6 +45,9 @@ _SMALL_EXP = "g1_repose_small_cube_table"
 
 # Applied to all BigCubeFloor variants (relative → repo root in env_cfgs).
 _EXCLUDE = "src/vibe/tasks/repose/config/g1/exclusions/unlearnable_3faw6xrn_f0eh005.json"
+
+SKIP_REASON: dict[str, str] = {}
+"""{task_id: why it could not register}. Empty when every task registered."""
 
 # Rows: (tag, rl_cfg, env_kw). PPOAux rows carry runner_cls + aux via env_kw.
 _BIG_TASKS = [
@@ -76,14 +85,18 @@ def _register(
     if scene == "big_cube_floor":
         env_kw["exclude_motions_file"] = _EXCLUDE
     env_kw["scene"] = scene
-    register_mjlab_task(
-        task_id=task_id,
-        env_cfg=g1_repose_cube_env_cfg(**env_kw),
-        play_env_cfg=g1_repose_cube_env_cfg(**env_kw, play=True),
-        rl_cfg=rl_cfg,
-        **({"runner_cls": runner_cls} if runner_cls else {}),
-    )
+    # Declared unconditionally, as in the other families: it is data, and reads no dataset.
     register_export_case(policy_export_test(task_id, scene))
+    try:
+        register_mjlab_task(
+            task_id=task_id,
+            env_cfg=g1_repose_cube_env_cfg(**env_kw),
+            play_env_cfg=g1_repose_cube_env_cfg(**env_kw, play=True),
+            rl_cfg=rl_cfg,
+            **({"runner_cls": runner_cls} if runner_cls else {}),
+        )
+    except MISSING_DATA as e:
+        SKIP_REASON[task_id] = f"{type(e).__name__}: {e}"
 
 
 for _tag, _rl_cfg, _raw_env_kw in _BIG_TASKS:

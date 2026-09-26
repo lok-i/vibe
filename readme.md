@@ -102,8 +102,8 @@ pytest tests/           # contracts over the synced data; no GPU, ~7 s
 
 ## contribute
 
-Contributions are warmly welcome, whether they pick up an item on our
-[roadmap](docs/roadmap.md) or bring a new feature. Open an issue or a PR and we'll build it together.
+We welcome contributions, be it an item on our
+[roadmap](docs/roadmap.md) or new features. Feel free to open an issue/PR.
 
 ## license
 
