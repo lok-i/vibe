@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SETUP = REPO / "scripts/setup"
-ORCS_SHA = "f1ba79d57218f4be1ef2f5b7886a04e4f3d662da"
+ORCS_SHA = "49886d16d4b39e89442ce82ecadc7ae4288fae17"
 
 
 def test_setup_scripts_parse() -> None:
@@ -23,7 +23,7 @@ def test_setup_scripts_parse() -> None:
         subprocess.run(["bash", "-n", str(SETUP / name)], check=True)
 
 
-def test_orcs_pin_is_the_lean_setup_build() -> None:
+def test_orcs_pin_is_v010_release() -> None:
     lock = json.loads((REPO / "deps.lock").read_text())
     assert lock["orcs"]["sha"] == ORCS_SHA
     assert lock["orcs"]["pip_install"] is True
