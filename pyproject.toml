@@ -25,6 +25,7 @@ dependencies = [
     # on the default logger, which is wandb. 0.28.0 is the last good release.
     "wandb>=0.22.3,<0.29",
     "einops",
+    "joblib",                    # GRAIL motion staging through orcs
     "omegaconf",
     "transformers==4.57.6",   # frozen vision backbones (vibe.encoders.zoo)
     # numpy/torch come with mjlab; mocke, rsl_rl and orcs are git deps owned by

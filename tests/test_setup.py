@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -27,6 +28,11 @@ def test_orcs_pin_is_the_lean_setup_build() -> None:
     assert lock["orcs"]["sha"] == ORCS_SHA
     assert lock["orcs"]["pip_install"] is True
     assert lock["orcs"]["pip_no_deps"] is True
+
+
+def test_vibe_installs_orcs_grail_staging_dependency() -> None:
+    project = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]
+    assert "joblib" in project["dependencies"]
 
 
 def test_setup_requires_vibes_active_local_venv() -> None:
