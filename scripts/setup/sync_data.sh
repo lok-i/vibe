@@ -65,7 +65,7 @@ print("\n".join(tomllib.load(open(sys.argv[1], "rb"))["project"]["optional-depen
 PYEOF
 )
     echo "[ PIP    ] orcs[perloco] staging deps: ${extra[*]}"
-    $PIP_CMD install "${extra[@]}"
+    "${PIP_CMD[@]}" install "${extra[@]}"
     eval "$(python -m vibe.core.paths --env | grep '^export ORCS_')"
     bash "$ORCS_DEPS_ROOT/orcs/scripts/setup/perceptive_locomotion.sh" \
         --sources "$(IFS=,; echo "${sources[*]}")" --no-smpl --yes

@@ -1,7 +1,9 @@
 # setup
 
 ```bash
-bash scripts/setup/sync_deps.sh              # .venv + vibe + the code rows of deps.lock
+uv venv --prompt vibe
+source .venv/bin/activate
+bash scripts/setup/sync_deps.sh              # vibe + the code rows of deps.lock
 bash scripts/setup/sync_deps.sh --deploy     # + onnxruntime, for export-agent
 bash scripts/setup/sync_data.sh [MODE...]    # data rows + staged terrain: all | inhouse | omre | grail
 bash scripts/setup/sync_{deps,data}.sh --check   # verify only: every checkout vs its pin, no network
@@ -12,9 +14,9 @@ bash scripts/setup/sync_{deps,data}.sh --check   # verify only: every checkout v
 | `inhouse` | retargeted motions (only the clips a task uses, `*.npz` only) + the generated nominal stand | Repose, Uolm, Dodge |
 | `omre` / `grail` | OmniRetarget / GRAIL terrain, staged by orcs | PerLoco |
 
-Both scripts are idempotent: re-run after a `deps.lock` bump. The venv is the active uv venv,
-else `./.venv` (created at `.python-version`). Installs are editable only: vibe finds `data/`
-by walking up to the repo root.
+Both scripts are idempotent: re-run after a `deps.lock` bump. Setup requires
+Vibe's active `./.venv`; dependency checkouts never create their own environments.
+Installs are editable only: vibe finds `data/` by walking up to the repo root.
 
 Trained on RTX 3090, L40S and RTX 5090 (Linux) at 4096 envs.
 

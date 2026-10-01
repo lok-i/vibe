@@ -74,37 +74,39 @@ spin() {
     return $rc
 }
 
-# ── the venv: uv-only, and the script activates it for itself ────────────────
-# An ACTIVE venv wins; otherwise the repo's `.venv`, so a fresh clone needs no activation.
-# "Active" means VIRTUAL_ENV holds a `pyvenv.cfg` — a conda prefix has none.
-# DEPS_PIP_CMD is the escape hatch.
-use_venv() {  # use_venv [create]
-    if [ -n "${DEPS_PIP_CMD:-}" ]; then
-        echo "[ENV] DEPS_PIP_CMD override: $DEPS_PIP_CMD"
-        PIP_CMD="$DEPS_PIP_CMD"; return
-    fi
+# ── the venv: explicit, uv-only, and owned by this checkout ──────────────────
+# Environment creation is a prerequisite, never a dependency-sync side effect.
+# Requiring Vibe's active .venv prevents a run from mutating a consumer or
+# dependency environment.
+use_venv() {
     if ! command -v uv &>/dev/null; then
         echo "[ERROR] uv not found. This project is uv-only."
         echo "        curl -LsSf https://astral.sh/uv/install.sh | sh"
         exit 1
     fi
-    # Stale, not fatal: an editor injecting its selected interpreter (a conda prefix) is
-    # the usual source, and the export below overrides it for every child anyway.
-    if [ -n "${VIRTUAL_ENV:-}" ] && [ ! -f "$VIRTUAL_ENV/pyvenv.cfg" ]; then
-        echo "[ WARN   ] ignoring VIRTUAL_ENV=$VIRTUAL_ENV — no pyvenv.cfg, not a venv"
-        unset VIRTUAL_ENV
-    fi
-    local venv="${VIRTUAL_ENV:-$REPO_ROOT/.venv}"
+    local venv="$REPO_ROOT/.venv"
     if [ ! -f "$venv/pyvenv.cfg" ]; then
-        if [ "${1:-}" != create ]; then
-            echo "[ERROR] no venv at $venv — run scripts/setup/sync_deps.sh first"
-            exit 1
-        fi
-        uv venv --python "$(cat "$REPO_ROOT/.python-version")" --prompt vibe "$venv"
+        echo "[ERROR] no Vibe venv at $venv. Create and activate it first:"
+        echo "        uv venv --prompt vibe"
+        echo "        source .venv/bin/activate"
+        exit 1
+    fi
+    if [ -z "${VIRTUAL_ENV:-}" ] || [ ! -f "$VIRTUAL_ENV/pyvenv.cfg" ]; then
+        echo "[ERROR] Vibe's venv is not active. Run: source .venv/bin/activate"
+        exit 1
+    fi
+    local active
+    active=$(cd "$VIRTUAL_ENV" && pwd -P)
+    venv=$(cd "$venv" && pwd -P)
+    if [ "$active" != "$venv" ]; then
+        echo "[ERROR] wrong venv active: $active"
+        echo "        Vibe setup requires: $venv"
+        echo "        deactivate the current venv, then run: source .venv/bin/activate"
+        exit 1
     fi
     export VIRTUAL_ENV="$venv" PATH="$venv/bin:$PATH"
-    PIP_CMD="uv pip"
-    echo "[ENV] installer: $PIP_CMD -> $VIRTUAL_ENV"
+    PIP_CMD=(uv pip)
+    echo "[ENV] installer: ${PIP_CMD[*]} -> $VIRTUAL_ENV"
 }
 
 # ── deps.lock ────────────────────────────────────────────────────────────────
@@ -215,10 +217,11 @@ sync_one() {
     fi
 
     if [ "$pip_install" = "1" ]; then
-        local no_deps=""
-        [ "$pip_no_deps" = "1" ] && no_deps="--no-deps"
-        echo "[ PIP    ] $PIP_CMD install ${no_deps:+$no_deps }-e $rel_path"
-        $PIP_CMD install $no_deps -e "$path"
+        local pip_args=(install)
+        [ "$pip_no_deps" = "0" ] || pip_args+=(--no-deps)
+        pip_args+=(-e "$path")
+        echo "[ PIP    ] ${PIP_CMD[*]} ${pip_args[*]}"
+        "${PIP_CMD[@]}" "${pip_args[@]}"
     fi
 }
 

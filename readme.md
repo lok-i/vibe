@@ -17,9 +17,10 @@ Python itself.
 
 ```bash
 git clone https://github.com/lok-i/vibe && cd vibe
-bash scripts/setup/sync_deps.sh     # .venv + pinned deps
-bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
+uv venv --prompt vibe
 source .venv/bin/activate
+bash scripts/setup/sync_deps.sh     # Vibe + pinned deps
+bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
 ```
 
 data modes, dependencies, troubleshooting: [docs/setup.md](docs/setup.md).
