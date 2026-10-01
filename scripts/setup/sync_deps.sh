@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Sync the CODE: a uv venv, vibe itself, and every deps.lock row under dependencies/.
+# Sync the CODE into Vibe's active repository-local uv venv.
 #
-#   1. the venv — the active one, else ./.venv (created at `.python-version`)
-#   2. `uv pip install -e .[dev]` — vibe FIRST: mjlab pins rsl-rl-lib==5.2.0 off PyPI,
+#   1. require the active ./.venv (create it first with `uv venv --prompt vibe`)
+#   2. `uv pip install -e .[dev]` — Vibe FIRST: mjlab pins rsl-rl-lib==5.2.0 off PyPI,
 #      so the fork below must be the last install, every run
 #   3. per row: shallow-fetch the pinned SHA, `uv pip install -e` it
 #   4. generate machine-local object XMLs, then VERIFY every HEAD against its pin
@@ -30,10 +30,10 @@ done
 rows=$(lock_rows dependencies/)
 
 if [ "$CHECK_ONLY" = 0 ]; then
-    use_venv create
+    use_venv
     echo
     echo "=== vibe (self) ==="
-    $PIP_CMD install -e "$REPO_ROOT[$EXTRAS]"
+    "${PIP_CMD[@]}" install -e "$REPO_ROOT[$EXTRAS]"
 
     sync_rows "$rows"
 

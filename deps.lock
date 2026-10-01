@@ -31,7 +31,7 @@
     },
     "orcs": {
         "url": "https://github.com/lok-i/orcs.git",
-        "sha": "1b71dcf015bdbad224ee166cf477b79433334eca",
+        "sha": "f1ba79d57218f4be1ef2f5b7886a04e4f3d662da",
         "path": "dependencies/orcs",
         "pip_install": true,
         "pip_no_deps": true,
