@@ -4,6 +4,7 @@
 [![Project](https://img.shields.io/badge/Project-Page-brightgreen)](https://lok-i.github.io/vibe-control/)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-vibe-blue)](https://lok-i.github.io/vibe-control/#demo)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Model-yellow)](https://huggingface.co/lkrajan/vibe)
+[![Hardware Deployment](https://img.shields.io/badge/Hardware-Deployment-orange)](https://github.com/drcl-deploy/vibe_ws)
 [![License](https://img.shields.io/badge/License-BSD--3-blue)](LICENSE)
 
 <img src="docs/media/overview.jpg" alt="ViBe on a Unitree G1: stepping, dodging, carrying, cube reorientation">
@@ -61,7 +62,8 @@ export-agent   <task-id> --release --viewer native # + watch the two-world check
 export-encoder --tag theia-tiny                    # vision backbone -> exports/enc/
 ```
 
-for deployment support, see: [docs/export.md](docs/export.md).
+for export details, see: [docs/export.md](docs/export.md). Hardware deployment code and
+setup instructions for the Unitree G1 live in [drcl-deploy/vibe_ws](https://github.com/drcl-deploy/vibe_ws).
 
 ### test
 
@@ -105,6 +107,7 @@ pytest tests/           # contracts over the synced data; no GPU, ~7 s
 
 We welcome contributions, be it an item on our
 [roadmap](docs/roadmap.md) or new features. Feel free to open an issue/PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for validation and PR guidelines.
 
 ## license
 

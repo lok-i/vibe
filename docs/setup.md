@@ -37,6 +37,13 @@ rsl_rl ──► mocke ──► orcs ──► vibe       one direction; a term
 editable install per package, so vibe's lock wins over orcs's; `orcs.core.deps` prints the
 live-vs-validated diff at import.
 
+ViBe 0.1.2 uses ORCS v0.1.1 with ViBe's existing asset and motion-data pins.
+ORCS's newer EgoHTR data is not required by the ViBe tasks; advancing the shared
+motion-data pin would also add demonstrations to Uolm's training roster.
+The ORCS upgrade removes robot reset perturbations during play for Dodge and
+PerLoco, matching Repose and Uolm. Training retains its robustness domain.
+Task randomness remains in play; use fixed seeds and clips for repeatable evaluation.
+
 ## failure modes
 
 | symptom | cause | fix |
