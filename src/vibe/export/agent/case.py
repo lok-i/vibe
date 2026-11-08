@@ -12,8 +12,9 @@ EPISODE IDENTITY — whose arity is the task's business, not the exporter's:
 | dodge | throw | 0 — one nominal stand; `seed` pins the throw |
 
 `clips` is a KEEP list applied as its COMPLEMENT through `exclude_motions` (the
-public exclusion grammar, `orcs.core.data.scan.matches_exclude`). Never through
-`dataset_dir`: rewriting the root to a motion folder is valid only for a flat
+public exclusion grammar, `orcs.core.data.scan.matches_exclude`). An explicit
+`include_motions` roster is narrowed to the same clips, preserving its order.
+Never through `dataset_dir`: rewriting the root to a motion folder is valid only for a flat
 scan, and every bucketed scan (`scan_grouped`) takes a str at a fixed depth —
 that rewrite is what broke every task but repose.
 
@@ -101,5 +102,14 @@ def apply(env_cfg: ManagerBasedRlEnvCfg, case: ExportCase) -> tuple[str, ...]:
         raise ValueError(
             f"{case.task_id}: pinned clip(s) sit on the task's OWN exclusion list: "
             f"{killed} — the task killed those for a reason; pin another.")
+    includes = getattr(cmd, "include_motions", None)
+    if includes is not None:
+        outside = sorted(set(case.clips) - set(includes))
+        if outside:
+            raise ValueError(
+                f"{case.task_id}: pinned clip(s) outside the task's include roster: {outside}")
+        # ORCS validates every required include AFTER exclusions. Leaving the
+        # training roster here would require clips this export just excluded.
+        cmd.include_motions = tuple(c for c in includes if c in case.clips)
     cmd.exclude_motions = tuple(sorted(every - set(case.clips)))
     return tuple(sorted(case.clips))

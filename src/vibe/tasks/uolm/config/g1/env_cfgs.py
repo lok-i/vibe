@@ -19,8 +19,12 @@ from __future__ import annotations
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers.metrics_manager import MetricsTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from orcs.assets import OBJECT_BODY_NAME
-from orcs.tasks.uolm.env_cfg import uolm_env_cfg
+from orcs.assets import OBJECT_BODY_NAME, omni_object_entity_cfg
+from orcs.tasks.uolm.env_cfg import (
+    _DEFAULT_COLLISION,
+    _DEFAULT_OBJECT_NAMES,
+    uolm_env_cfg,
+)
 
 from vibe.assets.g1 import G1_BASE_CFG, G1_VIS_LEAN_CFG
 from vibe.core import sensors
@@ -107,3 +111,27 @@ def g1_uolm_env_cfg(*, play: bool = False, **orcs_kw) -> ManagerBasedRlEnvCfg:
     # after the guard on purpose: a fixed film stage is not a domain
     apply_stage_render(cfg, play=play)
     return cfg
+
+
+def _suitcase_assignment(num_envs: int) -> list[int]:
+    return [0] * num_envs
+
+
+def g1_uolm_suitcase_env_cfg(
+    *, play: bool = False, dataset_dir: str | None = None,
+) -> ManagerBasedRlEnvCfg:
+    """Native suitcase learning roster with the full camera-compatible model.
+
+    A reduced variant model crashes mujoco_warp 3.8.1's policy renderer. Keep
+    the physical model's full variant slots, as in the legacy UOLM export,
+    while every world uses suitcase (variant 0). The command still has ONE
+    object identity and the exact 63-clip roster, including for the critic and
+    benchmark. This changes neither the suitcase asset nor its mechanics.
+    """
+    names = ("suitcase", *(name for name in _DEFAULT_OBJECT_NAMES if name != "suitcase"))
+    object_entity = omni_object_entity_cfg(names, dict(_DEFAULT_COLLISION))
+    object_entity.assignment = _suitcase_assignment
+    return g1_uolm_env_cfg(
+        play=play, roster="suitcase", dataset_dir=dataset_dir,
+        _object_entity=object_entity,
+    )

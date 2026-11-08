@@ -82,10 +82,12 @@ def test_export_case_feeds_every_consumer(task_id):
     if roster := getattr(cmd, "ordered_object_names", None):
         # env->object is fixed at sim init; an object with no surviving clip hands
         # `multinomial` an all-zero allowance row for the world holding it.
-        from orcs.tasks.uolm.mdp.demo_loader import load_motion_files_from_datasets
+        from orcs.tasks.uolm.mdp.demo_loader import get_motion_files_for_objects
 
-        by_object = load_motion_files_from_datasets(
-            cmd.dataset_dir, exclude_motions=list(cmd.exclude_motions or ()))
+        by_object, _ = get_motion_files_for_objects(
+            list(roster), cmd.dataset_dir,
+            exclude_motions=list(cmd.exclude_motions or ()),
+            include_motions=getattr(cmd, "include_motions", None))
         starved = [o for o in roster if not by_object.get(o)]
         assert not starved, (
             f"{task_id}: roster object(s) {starved} keep no clip — pin one per object.")
