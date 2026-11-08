@@ -36,7 +36,6 @@ from vibe.core.sensors import HEAD_CAM_NAME
 __all__ = ["DomainState", "domain_state", "assert_play_is_clean",
            "apply_render_domain", "apply_query_noise", "QUERY_NOISY_GROUPS",
            "flat_floor", "FLOOR_RGBA", "apply_stage_render", "STAGE_RGBA",
-           "prepare_nominal_vision",
            "VibeEnvCfg", "with_vision_knobs"]
 
 QUERY_NOISY_GROUPS = ("q_proprio",)
@@ -226,20 +225,6 @@ def apply_query_noise(
     if play:
         return
     _apply_obs_noise(cfg, groups)
-
-
-def prepare_nominal_vision(cfg: ManagerBasedRlEnvCfg) -> None:
-    """Finish nominal benchmark cleanup after the task's privileged hook.
-
-    The upstream hook knows its own observation groups. Query measurements
-    are ViBe's, and the fixed stage must also reach the policy renderer.
-    Native failures and task events stay in the training configuration.
-    """
-    for name in QUERY_NOISY_GROUPS:
-        group = cfg.observations.get(name)
-        if group is not None:
-            group.enable_corruption = False
-    apply_stage_render(cfg, play=True)
 
 
 # ---------------------------------------------------------------------------

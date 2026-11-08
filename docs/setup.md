@@ -5,19 +5,14 @@ uv venv --prompt vibe
 source .venv/bin/activate
 bash scripts/setup/sync_deps.sh              # vibe + the code rows of deps.lock
 bash scripts/setup/sync_deps.sh --deploy     # + onnxruntime, for export-agent
-bash scripts/setup/sync_data.sh [MODE...]    # all | inhouse | omre | grail | hoiretarget
-bash scripts/setup/sync_{deps,data}.sh --check   # Git pins + native HOI checksums; no network
+bash scripts/setup/sync_data.sh [MODE...]    # data rows + staged terrain: all | inhouse | omre | grail
+bash scripts/setup/sync_{deps,data}.sh --check   # verify only: every checkout vs its pin, no network
 ```
 
 | mode | fetches | for |
 |---|---|---|
 | `inhouse` | retargeted motions (only the clips a task uses, `*.npz` only) + the generated nominal stand | Repose, Uolm, Dodge |
 | `omre` / `grail` | OmniRetarget / GRAIL terrain, staged by orcs | PerLoco |
-| `hoiretarget` | 63 native HOI-Retarget suitcase clips, staged and verified by ORCS | Uolm-Suitcase |
-
-`all` includes `hoiretarget`; `sync_data.sh hoiretarget --check` verifies that
-export without requiring the legacy motion checkout. See the
-[suitcase guide](suitcase.md) for play, training and evaluation.
 
 Both scripts are idempotent: re-run after a `deps.lock` bump. Setup requires
 Vibe's active `./.venv`; dependency checkouts never create their own environments.
@@ -42,15 +37,11 @@ rsl_rl ──► mocke ──► orcs ──► vibe       one direction; a term
 editable install per package, so vibe's lock wins over orcs's; `orcs.core.deps` prints the
 live-vs-validated diff at import.
 
-The ORCS pin includes native suitcase staging, the repertoire benchmark and
-opt-in adaptive motion sampling. ViBe retains its existing asset and motion-data pins.
+ViBe 0.1.2 uses ORCS v0.1.1 with ViBe's existing asset and motion-data pins.
 ORCS's newer EgoHTR data is not required by the ViBe tasks; advancing the shared
 motion-data pin would also add demonstrations to Uolm's training roster.
-Play removes robot reset perturbations for all task families; training retains
-its robustness domain. The shared VOF implementation now reads live randomized
-mass/inertia, which changes assisted UOLM training behavior. The suitcase
-baseline disables VOF. Released checkpoint compatibility revisions remain
-historical provenance in `src/vibe/release.json`.
+The ORCS upgrade removes robot reset perturbations during play for Dodge and
+PerLoco, matching Repose and Uolm. Training retains its robustness domain.
 Task randomness remains in play; use fixed seeds and clips for repeatable evaluation.
 
 ## failure modes

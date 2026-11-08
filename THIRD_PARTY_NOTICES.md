@@ -46,18 +46,8 @@ bundled in the VIBE Python distribution:
 | [mjlab](https://github.com/mujocolab/mjlab) | Manager-based simulation framework | Its own distribution and license |
 | [OmniRetarget Dataset](https://huggingface.co/datasets/omniretarget/OmniRetarget_Dataset) | Retargeted terrain and object motions | MIT as declared by its dataset card |
 | [GRAIL](https://github.com/NVlabs/GRAIL) | Terrain-motion source data | NVIDIA's upstream repository and data terms |
-| [HOI-Retarget](https://huggingface.co/datasets/leggedrobotics/hoi-retarget), via ORCS | 63 selected OMOMO G1 suitcase trajectories | Upstream trajectory terms recorded by ORCS: CC-BY-NC-SA-4.0; OMOMO object geometry: MIT. Source pins, attribution and conversion provenance remain in the native manifest and sample metadata. |
 | `transformers`, `einops`, `omegaconf` | Backbone loading and configuration | Apache-2.0 / MIT as published |
 | The installed `assets` package | Robot and object models | Its own distribution |
 
 Users are responsible for obtaining restricted datasets and model weights and
 for complying with their terms.
-
-The suitcase references derive from Jiaman Li et al., *Object Motion Guided
-Human Motion Synthesis* (OMOMO, SIGGRAPH Asia 2023), through Jihwan Shin et al.,
-*HOI-Retarget: Contact-Centric Retargeting for Human-Object Interaction* (2026).
-HOI-Retarget credits InterAct for contact annotations. ORCS stages the selected
-references with named-joint mapping, object-origin conversion, 50 Hz resampling,
-native FK/velocities and contacts replayed against the simulation geometry.
-Converted trajectories retain their upstream terms. ViBe does not bundle the
-raw source shard, geometry or retargeting code in its Python distribution.

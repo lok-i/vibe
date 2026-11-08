@@ -21,11 +21,10 @@ git clone https://github.com/lok-i/vibe && cd vibe
 uv venv --prompt vibe
 source .venv/bin/activate
 bash scripts/setup/sync_deps.sh     # Vibe + pinned deps
-bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail | hoiretarget
+bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
 ```
 
 data modes, dependencies, troubleshooting: [docs/setup.md](docs/setup.md).
-Suitcase data, play, training and evaluation: [docs/suitcase.md](docs/suitcase.md).
 
 ## usage
 
@@ -39,7 +38,6 @@ train Vibe-Repose-BigCubeFloor-ImgFeat-Ext --env.scene.num-envs 4096 \
 # play
 play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native
 play Vibe-Uolm-ImgFeat-Ext --agent initial --viewer native
-play Vibe-Uolm-Suitcase-ImgFeat-Ext --agent initial --num-envs 1 --viewer viser
 ```
 
 | arg | options |

@@ -12,11 +12,10 @@ ids the dependencies register.
 |---|---|---|
 | Task | `Repose` | reorient a 6-colour cube until the commanded colour faces up |
 | | `PerLoco` | perceptive locomotion over staged terrain |
-| | `Uolm` | uni-object loco-manipulation; six-object roster by default |
+| | `Uolm` | uni-object loco-manipulation over a six-object roster |
 | | `Dodge` | evade a thrown ball; the reference is a still stand, so all evasion comes from the adapter |
 | Source (PerLoco) | `Grail` · `OmRe` | GRAIL curbs · OmniRetarget climbs |
 | Scene (Repose) | `BigCubeFloor` · `SmallCubeTable` | 0.61 m cube on the floor · 0.36 m cube onto a per-clip table |
-| Scene (Uolm) | `Suitcase` | one suitcase, 63 native HOI-Retarget clips |
 | Scene (Dodge) | `ConeFast` | indoor room, faster throws from farther out, 64-px camera |
 | Extero | `ObjKin` | privileged object state: the twin row (Repose only; orcs registers the others) |
 | | `ImgFeat` | frozen-encoder features from the head camera |
@@ -34,13 +33,10 @@ ids the dependencies register.
 | `Vibe-Repose-SmallCubeTable-ImgFeat-Ext` | — | (new scene: small cube onto a table) |
 | `Vibe-PerLoco-{Grail,OmRe}-ImgFeat-Ext` | `Orcs-PerLoco-{Grail,OmRe}-AdaptSonic` | height scan |
 | `Vibe-Uolm-ImgFeat-Ext` | `Orcs-Uolm-AdaptSonic` | object kinematics + id |
-| `Vibe-Uolm-Suitcase-ImgFeat-Ext` | `Orcs-Uolm-Suitcase-AdaptSonic` | object kinematics + id |
 | `Vibe-Dodge-{,ConeFast-}ImgFeat-Ext` | `Orcs-Dodge-AdaptSonic` | ball kinematics |
 | `Vibe-Repose-BigCubeFloor-ImgRgb` | `…-ImgFeat-Ext` | frozen encoder → trainable CNN |
 
-The critic stays privileged in every row. The [suitcase guide](suitcase.md)
-covers its development dependency, native data, 21k/no-VOF training recipe,
-optional adaptive sampler, repertoire benchmark and export.
+The critic stays privileged in every row.
 
 ## per-run flags
 
