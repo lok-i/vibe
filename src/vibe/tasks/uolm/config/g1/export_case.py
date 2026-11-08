@@ -34,3 +34,9 @@ POLICY_EXPORT_TEST = ExportCase(
     task_id="Vibe-Uolm-ImgFeat-Ext",
     clips=CLIPS,
 )
+
+SUITCASE_EXPORT_TEST = ExportCase(
+    task_id="Vibe-Uolm-Suitcase-ImgFeat-Ext",
+    clips=("omomo/sub1_suitcase_010/sample1",),
+)
+"""Both worlds carry the same suitcase identity from the native HOI roster."""
