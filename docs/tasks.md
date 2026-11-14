@@ -42,6 +42,9 @@ The critic stays privileged in every row. The [suitcase guide](suitcase.md)
 covers its development dependency, native data, 21k/no-VOF training recipe,
 optional adaptive sampler, repertoire benchmark and export.
 
+For a bounded suitcase instability investigation and captured-update replay, see
+[numerical diagnostics](numerics.md).
+
 ## per-run flags
 
 A knob varied between runs of one task is a flag, not a token. Both are recorded in the run cfg.
