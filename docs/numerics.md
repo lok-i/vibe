@@ -59,6 +59,43 @@ seconds to save diagnostics before SIGKILL. The recorder also checks its time
 budget during collection/update. `--updates` and `--minutes` can reduce the
 budget; they cannot exceed 1,000 and 90. No script pulls code or installs packages.
 
+## Continue after a healthy diagnostic window
+
+The explicit `after` command waits for the diagnostic process to exit and checks
+its exit status, all 1,000 update records, the normal completion capture and
+the final checkpoint (including Adam). A trigger, timeout, incomplete window or
+nonfinite checkpoint prevents continuation. It never retries a failed stage.
+
+```bash
+.venv/bin/python scripts/diagnostics/suitcase_numerics.py after \
+  --source-run logs/rsl_rl/vibe_uolm_suitcase/<diagnostic-run-directory> \
+  --source-pid <diagnostic-python-pid> \
+  --source-exitcode logs/deploy/<deployment>/exitcode.txt \
+  --output logs/deploy/<deployment>/continuation
+```
+
+This continues the **same ViBe vision policy** in new processes/W&B runs. The
+first continuation finishes the 20,000-update phase anneal; the second trains
+another 1,000 updates with `start_from_zero=True`. Model, critic, rank, PPO,
+VOF-off setting and capture guards are retained. Checkpoint saving returns to
+the original 1,500-update interval for the longer training stage. Each stage
+checks the runtime/dependency pins and GPU availability again before starting.
+Wall-clock limits are 24 hours for the remaining first stage and two hours for
+the final 1,000 updates, with a 60-second cleanup fallback.
+
+Remaining work is counted from the restored environment step counter. The
+diagnostic checkpoint labeled 6999 represents 7001 completed rollouts because
+the original resume repeated label 6000. Its continuation therefore runs 12,999
+updates, labeled 7001–19999, reaching exactly 20,000 completed rollouts. The
+phase-zero restart follows the original runner convention (labels 19999–20998).
+This corrects bookkeeping without changing the curriculum or adding an update.
+
+The output directory contains `queue.json`, per-stage console logs and an
+exclusive queue lock. Use a new output directory for a deliberately new queue;
+starting a second supervisor with the same output is rejected. `queue.json`
+reports waiting, running, completed or stopped. Passing this window still does
+not prove the numerical issue is fixed, so the same guards remain active.
+
 ## Capture and interpretation
 
 Each run writes `numerics/` under its normal training directory:

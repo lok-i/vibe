@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import json
 from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
@@ -28,6 +29,7 @@ from vibe.core.numerics import (
 )
 from vibe.tasks.uolm.numerics import (
     check_checkpoint,
+    completed_capture,
     disabled_vof_log,
     make_capture_runner,
 )
@@ -217,7 +219,8 @@ def test_raw_nonfinite_stops_before_actor_and_deadline_is_bounded(tmp_path):
     alg.recorder.close()
 
 
-def test_load_restores_adam_adaptive_rate_and_curriculum_before_reset(tmp_path):
+@pytest.mark.parametrize("align_completed", [False, True])
+def test_load_restores_adam_adaptive_rate_and_curriculum_before_reset(tmp_path, align_completed):
     alg, obs = build(tmp_path / "source")
     collect(alg, obs)
     alg.update()  # create nonempty Adam state
@@ -230,7 +233,7 @@ def test_load_restores_adam_adaptive_rate_and_curriculum_before_reset(tmp_path):
     assert check_checkpoint(path)["common_step_counter"] == 144024
     alg.recorder.close()
     alg, _ = build(tmp_path / "resumed")  # a fresh process has fresh normalizer buffers
-    runner_type = make_capture_runner()
+    runner_type = make_capture_runner(align_completed_updates=align_completed)
     runner = runner_type.__new__(runner_type)
     runner.alg = alg
     runner.alg.learning_rate = 1e-3
@@ -242,7 +245,7 @@ def test_load_restores_adam_adaptive_rate_and_curriculum_before_reset(tmp_path):
     runner.recorder = alg.recorder
     runner.load(str(path))
     assert reset_counts == [6001]
-    assert runner.current_learning_iteration == 6000
+    assert runner.current_learning_iteration == (6001 if align_completed else 6000)
     assert runner.alg.learning_rate == 7.59375e-5
     equal_trees(checkpoint["optimizer_state_dict"], alg.optimizer.state_dict())
     alg.recorder.close()
@@ -408,3 +411,123 @@ def test_runner_lifecycle_saves_capture_and_handles_parent_nan_guard(tmp_path):
     assert snapshot["update_ready"] is False
     assert torch.isnan(snapshot["offending_observations"]["critic"][0, 0])
     unhealthy.logger.stop_logging_writer()
+
+
+def capture_cli():
+    spec = importlib.util.spec_from_file_location("capture_cli", ROOT / "scripts/diagnostics/suitcase_numerics.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def completed_window(tmp_path):
+    alg, obs = build(tmp_path / "source")
+    collect(alg, obs)
+    alg.update()
+    alg.recorder.close()
+    root = tmp_path / "finished"
+    (root / "numerics").mkdir(parents=True)
+    (root / "numerics/stop.json").write_text(json.dumps({
+        "reason": "Update budget completed", "update_ready": True, "iteration": 7000,
+    }))
+    (root / "numerics/updates.jsonl").write_text("".join(
+        json.dumps({"iteration": i, "losses": {"value": .5, "surrogate": -.02, "entropy": 20}}) + "\n"
+        for i in range(6000, 7000)
+    ))
+    (root / "numerics/capture.pt").write_bytes(b"capture already verified by recorder tests")
+    checkpoint = {**cpu_copy(alg.save()), "iter": 6999,
+                  "infos": {"env_state": {"common_step_counter": 168024}}}
+    torch.save(checkpoint, root / "model_6999.pt")
+    return root
+
+
+def test_clean_gate_and_actual_update_counts_preserve_the_20k_plus_1k_schedule(tmp_path):
+    root = completed_window(tmp_path)
+    report = completed_capture(root, 6000, 1000, 168024)
+    cli = capture_cli()
+    cfg = cli.extension_config(report["checkpoint"], report, 20000, "stage1")
+    assert cfg.agent.max_iterations == 12999  # count rollouts, not repeated resume labels
+    assert cfg.env.commands["motion"].start_from_zero is False
+    assert cfg.agent.save_interval == 1500
+    assert cfg.agent.actor == load_rl_cfg(cli.TASK).actor
+    tail = cli.extension_config(root / "model_19999.pt", {
+        "iteration": 19999, "common_step_counter": 480000,
+    }, 21000, "phase_zero")
+    assert tail.agent.max_iterations == 1000
+    assert tail.env.commands["motion"].start_from_zero is True
+    assert tail.env.events["virtual_object_force"].params["natural_frequency"] == 0
+    assert tail.agent.actor == cfg.agent.actor and tail.agent.critic == cfg.agent.critic
+    assert tail.agent.algorithm == cfg.agent.algorithm
+    with pytest.raises(ValueError, match="exactly 20000"):
+        cli.extension_config(report["checkpoint"], report, 21000, "too_early")
+
+
+@pytest.mark.parametrize("failure", ["trigger", "partial", "nonfinite_loss", "bad_checkpoint", "wrong_counter"])
+def test_continuation_gate_refuses_failed_or_incomplete_windows(tmp_path, failure):
+    root = completed_window(tmp_path)
+    if failure == "trigger":
+        (root / "numerics/stop.json").write_text(json.dumps({
+            "reason": "DiagnosticStop: finite value-loss spike", "update_ready": True, "iteration": 7000,
+        }))
+    elif failure == "partial":
+        path = root / "numerics/updates.jsonl"
+        path.write_text("\n".join(path.read_text().splitlines()[:-1]) + "\n")
+    elif failure == "nonfinite_loss":
+        path = root / "numerics/updates.jsonl"
+        path.write_text(path.read_text().replace('"value": 0.5', '"value": "nan"', 1))
+    else:
+        path = root / "model_6999.pt"
+        checkpoint = torch.load(path, weights_only=False)
+        if failure == "bad_checkpoint":
+            next(iter(checkpoint["critic_state_dict"].values())).fill_(float("nan"))
+        else:
+            checkpoint["infos"]["env_state"]["common_step_counter"] -= 24
+        torch.save(checkpoint, path)
+    with pytest.raises((ValueError, DiagnosticStop)):
+        completed_capture(root, 6000, 1000, 168024)
+
+
+def test_queue_starts_both_stages_only_after_success_and_never_retries(tmp_path, monkeypatch):
+    cli = capture_cli()
+    source = completed_window(tmp_path)
+    exitcode = tmp_path / "exitcode.txt"
+    exitcode.write_text("0\n")
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+    monkeypatch.setattr(cli, "require_idle_gpu", lambda: None)
+    calls = []
+    original_gate = cli.completed_capture
+
+    def gate(path, first, count, counter):
+        if Path(path) == source:
+            return original_gate(path, first, count, counter)
+        calls.append((first, count, counter))
+        label = first + count - 1
+        return {"checkpoint": str(Path(path) / f"model_{label}.pt"), "iteration": label,
+                "common_step_counter": counter}
+
+    def launch(command, **kwargs):
+        run_name = command[command.index("--run-name") + 1]
+        (tmp_path / "logs/rsl_rl/vibe_uolm_suitcase" / f"timestamp_{run_name}").mkdir(parents=True)
+
+    monkeypatch.setattr(cli, "completed_capture", gate)
+    monkeypatch.setattr(cli.subprocess, "run", launch)
+    cli.queued_continuation(source, 999999999, exitcode, tmp_path / "queue")
+    assert calls == [(7001, 12999, 480000), (19999, 1000, 504000)]
+    assert json.loads((tmp_path / "queue/queue.json").read_text())["status"] == "completed"
+    with pytest.raises(FileExistsError):
+        cli.queued_continuation(source, 999999999, exitcode, tmp_path / "queue")
+    exitcode.write_text("2\n")
+    with pytest.raises(RuntimeError, match="nonzero"):
+        cli.queued_continuation(source, 999999999, exitcode, tmp_path / "failed_queue")
+    assert len(calls) == 2
+
+
+def test_continuation_does_not_start_over_another_gpu_job(monkeypatch):
+    cli = capture_cli()
+    monkeypatch.setattr(cli.subprocess, "check_output", lambda *a, **kw:
+                        f"{cli.os.getpid()}, /venv/bin/python\n123, /usr/bin/ptyxis\n")
+    cli.require_idle_gpu()  # its own optional CUDA context and desktop apps are harmless
+    monkeypatch.setattr(cli.subprocess, "check_output", lambda *a, **kw:
+                        "123, /usr/bin/ptyxis\n456, /another/project/.venv/bin/python\n")
+    with pytest.raises(RuntimeError, match="another process"):
+        cli.require_idle_gpu()

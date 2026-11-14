@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import json
+import math
 import shutil
 from dataclasses import asdict
 from pathlib import Path
@@ -22,7 +24,7 @@ from vibe.core.numerics import (
 )
 
 
-def check_checkpoint(path, expected_iteration=6000):
+def check_checkpoint(path, expected_iteration=6000, expected_counter=None):
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
     if checkpoint["iter"] != expected_iteration:
         raise ValueError(f"Expected iteration {expected_iteration}, got {checkpoint['iter']}")
@@ -31,7 +33,8 @@ def check_checkpoint(path, expected_iteration=6000):
             raise ValueError(f"Missing checkpoint state: {key}")
     finite(checkpoint, "checkpoint")
     counter = checkpoint["infos"]["env_state"]["common_step_counter"]
-    if counter != (expected_iteration + 1) * 24:
+    expected_counter = (expected_iteration + 1) * 24 if expected_counter is None else expected_counter
+    if counter != expected_counter or counter <= 0 or counter % 24:
         raise ValueError(f"Unexpected curriculum counter: {counter}")
     rates = {group["lr"] for group in checkpoint["optimizer_state_dict"]["param_groups"]}
     if len(rates) != 1 or not all(0 < rate < float("inf") for rate in rates):
@@ -49,7 +52,33 @@ def disabled_vof_log(extras):
     return {**extras, "log": log}
 
 
-def make_capture_runner(options=None, metadata=None):
+def completed_capture(run_dir, first_iteration, num_updates, final_counter):
+    """Gate continuation on a complete, finite window and its exact final checkpoint."""
+    run_dir = Path(run_dir)
+    stop = json.loads((run_dir / "numerics/stop.json").read_text())
+    if (stop["reason"] != "Update budget completed" or not stop["update_ready"]
+            or stop["iteration"] != first_iteration + num_updates):
+        raise ValueError(f"Source run did not complete cleanly: {stop['reason']}")
+    count = 0
+    with (run_dir / "numerics/updates.jsonl").open() as stream:
+        for count, line in enumerate(stream, 1):
+            record = json.loads(line)
+            if record["iteration"] != first_iteration + count - 1:
+                raise ValueError("Missing or repeated updates in the source diagnostic window")
+            if not record["losses"] or not all(
+                isinstance(x, (int, float)) and math.isfinite(x) for x in record["losses"].values()
+            ):
+                raise ValueError("Nonfinite source update; continuation refused")
+    if count != num_updates:
+        raise ValueError(f"Expected {num_updates} completed updates, got {count}")
+    if not (run_dir / "numerics/capture.pt").is_file():
+        raise ValueError("Final diagnostic capture is missing")
+    checkpoint = run_dir / f"model_{first_iteration + num_updates - 1}.pt"
+    return check_checkpoint(checkpoint, first_iteration + num_updates - 1, final_counter)
+
+
+def make_capture_runner(options=None, metadata=None, *, expected_iteration=6000,
+                        expected_counter=None, align_completed_updates=False):
     options = options or CaptureOptions()
     class CaptureRunner(MjlabOnPolicyRunner):
         def __init__(self, env, train_cfg, log_dir=None, device="cpu"):
@@ -97,7 +126,7 @@ def make_capture_runner(options=None, metadata=None):
         def load(self, path, load_cfg=None, strict=True, map_location=None):
             if load_cfg is not None or not strict:
                 raise ValueError("The diagnostic continuation requires a full strict checkpoint load")
-            report = check_checkpoint(path)
+            report = check_checkpoint(path, expected_iteration, expected_counter)
             infos = super().load(path, load_cfg, strict, map_location or "cpu")
             sync_adaptive_lr(self.alg)
             env = self.env.unwrapped
@@ -112,10 +141,15 @@ def make_capture_runner(options=None, metadata=None):
             self.env.reset()
             if env.common_step_counter != counter:
                 raise RuntimeError("Episode reset changed the curriculum counter")
+            if align_completed_updates:
+                # Diagnostic resume repeats label 6000. Continue the remaining
+                # stage using the actual completed-rollout count, not that label.
+                self.current_learning_iteration = counter // event["num_steps_per_env"]
             self.recorder.iteration = self.current_learning_iteration
             self.recorder.metadata["resume"] = report
             write_json(self.recorder.output / "resume.json", {
                 **report, "policy_update_count": env.policy_update_count,
+                "next_iteration_label": self.current_learning_iteration,
                 "ppo_learning_rate": self.alg.learning_rate,
                 "episode_state_restored": False, "rng_state_restored": False,
             })
