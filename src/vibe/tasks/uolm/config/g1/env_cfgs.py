@@ -31,6 +31,7 @@ from vibe.core.env_cfgs import (
     assert_play_is_clean,
     domain_state,
     flat_floor,
+    with_vision_knobs,
 )
 from vibe.core.mdp.metrics import object_in_fov
 from vibe.tasks.uolm.config.g1 import observation_cfgs as oc
@@ -106,4 +107,4 @@ def g1_uolm_env_cfg(*, play: bool = False, **orcs_kw) -> ManagerBasedRlEnvCfg:
         assert_play_is_clean(cfg, before)
     # after the guard on purpose: a fixed film stage is not a domain
     apply_stage_render(cfg, play=play)
-    return cfg
+    return with_vision_knobs(cfg, play=play)

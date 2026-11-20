@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import dataclasses
 
+import tyro
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp import dr
 from mjlab.managers.event_manager import EventTermCfg
@@ -31,6 +32,12 @@ from orcs.core.obs import apply_obs_noise as _apply_obs_noise
 
 from vibe.core import mdp
 from vibe.core.mdp.observations import image_feature
+from vibe.core.rendering import (
+    RenderBackend,
+    VisualDrCfg,
+    apply_visual_dr,
+    configure_backend,
+)
 from vibe.core.sensors import HEAD_CAM_NAME
 
 __all__ = ["DomainState", "domain_state", "assert_play_is_clean",
@@ -106,16 +113,15 @@ def apply_render_domain(
     terrain_color: bool = True,
     terrain_ground_rgba: tuple[float, float, float, float] | None = None,
 ) -> None:
-    """Per-env-constant camera + light + floor variation. Bit-identical to repose.
+    """Per-env-constant camera + light + floor variation, shared by all tasks.
 
     NO-OP under `play` — that is the design, not a shortcut. A vibe task adds
     this AFTER orcs has run its own play overrides, so the alternative is an
     apply-then-subtract pair whose subtract half is a list someone forgets;
     `assert_play_is_clean` then has nothing to catch and stays honest.
 
-    Light INTENSITY is not here and cannot be: mjwarp's batched `Model` carries
-    `light_{type,castshadow,active,pos,dir}` and no diffuse/ambient field.
-    Direction is the half that survives, and it moves shading and shadows.
+    Additional native light/material/texture variation is opt-in through
+    `visual_dr`; the default domain keeps the existing direction and palette.
 
     `terrain_ground_rgba` forwards to `rand_terrain_color`: a task whose terrain
     has RAISED geometry passes its ground's nominal colour, and everything that
@@ -239,6 +245,12 @@ class VibeEnvCfg(ManagerBasedRlEnvCfg):
     token (docs/tasks.md).
     """
 
+    render_backend: RenderBackend = "warp"
+    """Policy camera renderer: warp or optix (PerLoco supports warp only)."""
+
+    visual_dr: VisualDrCfg = dataclasses.field(default_factory=VisualDrCfg)
+    play: tyro.conf.Suppress[bool] = False
+
     img_encoder: str | None = None
     """Frozen-encoder override, applied to EVERY `image_feature` term at once.
 
@@ -260,9 +272,15 @@ class VibeEnvCfg(ManagerBasedRlEnvCfg):
     """
 
     def __post_init__(self) -> None:
-        """Rebind the encoder. Runs at BUILD time and again after a tyro override
-        (tyro reconstructs the dataclass), so it must stay idempotent — it is: the
-        name is written, never derived from the previous one."""
+        """Apply run options at factory construction and after tyro overrides.
+
+        Copy shared containers before selecting cameras or adding native DR.
+        Reapplying the same options preserves their configuration.
+        """
+        self.scene = dataclasses.replace(self.scene)
+        self.events = dict(self.events)
+        configure_backend(self, self.render_backend)
+        apply_visual_dr(self, self.visual_dr, play=self.play)
         if not self.img_encoder:
             return
         for group in (self.observations or {}).values():
@@ -272,14 +290,17 @@ class VibeEnvCfg(ManagerBasedRlEnvCfg):
                     term.params = {**term.params, "model_name": self.img_encoder}
 
 
-def with_vision_knobs(cfg: ManagerBasedRlEnvCfg) -> VibeEnvCfg:
+def with_vision_knobs(
+    cfg: ManagerBasedRlEnvCfg, *, play: bool | None = None,
+) -> VibeEnvCfg:
     """Re-type a finished env cfg as `VibeEnvCfg`, field for field. Idempotent.
 
-    Called LAST in a task factory, after `assert_play_is_clean` — this adds a
-    field, never a term, so it cannot change what the guard sees. tyro reads its
+    Called LAST in a task factory, after `assert_play_is_clean`. Extra DR defaults
+    off and rejects play when requested through tyro. tyro reads its
     flags off the DEFAULT INSTANCE rather than the `TrainConfig.env` annotation,
     which is why a subclass reaches the CLI without touching mjlab.
     """
     if isinstance(cfg, VibeEnvCfg):
         return cfg
-    return VibeEnvCfg(**{f.name: getattr(cfg, f.name) for f in dataclasses.fields(cfg)})
+    values = {f.name: getattr(cfg, f.name) for f in dataclasses.fields(cfg)}
+    return VibeEnvCfg(**values, play=bool(play))

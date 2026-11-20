@@ -56,16 +56,11 @@ sources=()
 has omre && sources+=(omni)
 has grail && sources+=(grail)
 if [ ${#sources[@]} -gt 0 ]; then
-    # orcs's `perloco` extra (staging-only deps), read from ITS pyproject — never
-    # respelled here. Not `-e orcs[perloco]`: that re-resolves mjlab, whose
-    # rsl-rl-lib==5.2.0 pin would swap out the fork.
-    mapfile -t extra < <(python - "$REPO_ROOT/dependencies/orcs/pyproject.toml" <<'PYEOF'
-import sys, tomllib
-print("\n".join(tomllib.load(open(sys.argv[1], "rb"))["project"]["optional-dependencies"]["perloco"]))
-PYEOF
-)
-    echo "[ PIP    ] orcs[perloco] staging deps: ${extra[*]}"
-    "${PIP_CMD[@]}" install "${extra[@]}"
+    # Staging dependencies are resolved with the source stack by sync_deps.sh.
+    python -c 'from pxr import Usd' || {
+        echo "[ERROR] staging dependencies missing; run scripts/setup/sync_deps.sh"
+        exit 1
+    }
     eval "$(python -m vibe.core.paths --env | grep '^export ORCS_')"
     bash "$ORCS_DEPS_ROOT/orcs/scripts/setup/perceptive_locomotion.sh" \
         --sources "$(IFS=,; echo "${sources[*]}")" --no-smpl --yes

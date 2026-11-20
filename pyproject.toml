@@ -3,21 +3,17 @@ name = "vibe"
 version = "0.1.2"
 description = "Visual Behavior adaptation — vision-only whole-body control for humanoids"
 readme = "readme.md"
-# 3.11, not 3.10: vibe hard-imports orcs, and orcs needs `tomllib` from stdlib.
-requires-python = ">=3.11"
+# Python 3.12 supports the published warp-optix wheels.
+requires-python = ">=3.12,<3.13"
 license = "BSD-3-Clause"
 license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Lokesh Krishna", email = "lkrajan@usc.edu" }]
 dependencies = [
-    # The validated simulator stack, pinned exactly and in lockstep with orcs.
-    # mjlab pins rsl-rl-lib with `==`, so a floor here resolves a newer mjlab that
-    # rips out the rsl_rl fork; and 1.6 renders the skybox into sensor cameras,
-    # which moves the head cam's input distribution out from under every trained
-    # vision checkpoint. Bump only together with orcs — see docs/setup.md.
-    "mjlab==1.4.0",
-    "mujoco==3.8.1",
-    "mujoco-warp==3.8.1",
-    "warp-lang==1.13.0",
+    # Simulator source checkouts and the reviewed mjlab patch are owned by deps.lock.
+    "mjlab==1.6.1+vibe.1",
+    "mujoco-core[rendering]==4.0.1",
+    "mujoco-warp==4.0.1",
+    "warp-lang==1.18.0",
     # Capped, not just floored: rsl_rl's WandbLogWriter passes the legacy
     # `Settings(start_method=...)`, which 0.29 turned from a deprecation warning
     # into a hard pydantic `extra_forbidden`. mjlab asks only for >=0.22.3, so a
@@ -27,6 +23,8 @@ dependencies = [
     "einops",
     "joblib",                    # GRAIL motion staging through orcs
     "omegaconf",
+    "torch==2.15.0",
+    "torchvision==0.29.2",
     "transformers==4.57.6",   # frozen vision backbones (vibe.encoders.zoo)
     # numpy/torch come with mjlab; mocke, rsl_rl and orcs are git deps owned by
     # deps.lock, never listed here.
@@ -53,6 +51,8 @@ export-encoder = "vibe.export.encoder.export_onnx:main"
 vibe-download-released-models = "vibe.release:main"
 
 [project.optional-dependencies]
+optix = ["warp-optix==0.3.0"]
+perloco = ["orcs[perloco]"]
 dev = ["pytest>=8.0", "ruff>=0.4"]
 deploy = ["onnx", "onnxruntime"]
 

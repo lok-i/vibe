@@ -9,10 +9,15 @@ metadata (key `manifest`), so the `.onnx` alone is enough.
 | `export-encoder` | the frozen vision backbone, preprocessing baked in | `vision.onnx.v1` |
 
 ```bash
-bash scripts/setup/sync_deps.sh --deploy   # onnxruntime; never `pip install -e .[deploy]` (it swaps out the rsl_rl fork)
+bash scripts/setup/sync_deps.sh --deploy   # resolves export extras together with the retained rsl_rl fork
 ```
 
 ## agent
+
+The candidate simulator stack uses Warp by default. Set `VIBE_RENDER_BACKEND=optix`
+only on a compatible host and for non-PerLoco tasks; see [requirements](simulator-upgrade.md).
+An export check validates the exported policy on the chosen simulator, not training
+parity with the released checkpoint's original stack. Release provenance stays unchanged.
 
 ```bash
 export-agent <task-id> --release                    # the released checkpoint -> exports/agent/<task-id>/

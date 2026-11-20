@@ -394,7 +394,7 @@ def g1_repose_cube_env_cfg(
 
     # LAST, and after the play overrides on purpose: this adds a FIELD, never a
     # term or an event, so it cannot change what the play invariant sees.
-    return with_vision_knobs(cfg)
+    return with_vision_knobs(cfg, play=play)
 
 
 def _play_overrides(cfg: ManagerBasedRlEnvCfg) -> None:

@@ -41,6 +41,7 @@ from vibe.core.env_cfgs import (
     assert_play_is_clean,
     domain_state,
     flat_floor,
+    with_vision_knobs,
 )
 from vibe.core.mdp.metrics import object_in_fov
 from vibe.core.sensors import HEAD_CAM_NAME
@@ -133,7 +134,7 @@ def g1_dodge_env_cfg(
     # `ground_rgba` — the room's WALLS take the stage colour too, which is
     # what makes a ConeFast clip cut against a plane clip.
     apply_stage_render(cfg, play=play)
-    return cfg
+    return with_vision_knobs(cfg, play=play)
 
 
 def g1_dodge_cone_fast_env_cfg(

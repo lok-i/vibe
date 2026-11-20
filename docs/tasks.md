@@ -45,10 +45,17 @@ A knob varied between runs of one task is a flag, not a token. Both are recorded
 | flag | varies | default |
 |---|---|---|
 | `--env.img-encoder <hf-id>` | the frozen backbone, rebinding both image terms at once ([encoders](#encoders)) | Theia-tiny |
+| `--env.render-backend warp` | batch camera renderer (`optix` requires compatible hardware; unavailable for PerLoco) | `warp` |
+| `--env.visual-dr.lighting True` | native startup diffuse/ambient variation | off |
+| `--env.visual-dr.floor-material True` / `--env.visual-dr.floor-textures True` | native startup plane-floor variation (Repose/Uolm; excludes rooms and generated terrain) | off |
 | `--agent.drop-query-rows q_proprio` | which extractor attention rows exist (z stays 128-d) | none dropped |
 | `--num-envs 27` (play, `OmRe`) | fills all 9 terrain tiles | |
 
 ## train
+
+For the candidate stack, read [migration and renderer requirements](simulator-upgrade.md).
+Use `VIBE_RENDER_BACKEND=optix play ...` or `VIBE_RENDER_BACKEND=optix export-agent ...`
+to select the camera backend outside training. PerLoco rejects that override.
 
 The released runs' flags. The anneal ends before the run does: shorten both together.
 

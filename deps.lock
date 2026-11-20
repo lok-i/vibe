@@ -19,7 +19,6 @@
         "sha": "b50fb6d11e7616598dec8b444e88c55b559ec87b",
         "path": "dependencies/mocke",
         "pip_install": true,
-        "pip_no_deps": true,
         "lfs": false
     },
     "rsl_rl": {
@@ -31,10 +30,26 @@
     },
     "orcs": {
         "url": "https://github.com/lok-i/orcs.git",
-        "sha": "cbdfb604c93c05df328b9d8f3eee9d2b53bf7540",
+        "sha": "a0efd456999448d650e86471dabf9d27abfb2888",
         "path": "dependencies/orcs",
         "pip_install": true,
-        "pip_no_deps": true,
+        "lfs": false
+    },
+    "mjlab": {
+        "url": "https://github.com/mujocolab/mjlab.git",
+        "sha": "11ffee9816e1d0644e538854bfb8dd8acb82ebba",
+        "path": "dependencies/mjlab",
+        "pip_install": true,
+        "lfs": false,
+        "patches": [
+            "dependencies/orcs/patches/mjlab-1.6.1.patch"
+        ]
+    },
+    "mujoco_warp": {
+        "url": "https://github.com/google-deepmind/mujoco_warp.git",
+        "sha": "e0226800bba7cc09f252f6c8e1a5d922c422f4de",
+        "path": "dependencies/mujoco_warp",
+        "pip_install": true,
         "lfs": false
     }
 }

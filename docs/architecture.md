@@ -58,9 +58,18 @@ state, so the object half of the target is reachable only through the image.
 
 `assert_play_is_clean` fails a play cfg build if vibe added any training domain to it.
 
-The policy's frames come from mujoco_warp's rasterizer. The interactive viewer is a different
-renderer and ignores these limits:
+The policy's frames come from mujoco-warp's batch ray renderer, using native Warp
+by default. OptiX is optional for tasks without raycast sensors; PerLoco stays
+on Warp with its critic scanner intact. The interactive viewer is independent
+of this selection.
 
 - `texture > mat_rgba > geom_rgba`, so recolouring needs the texture gone (`flat_floor`);
 - alpha is not rendered, so a translucent object renders opaque;
-- light intensity and sky colour cannot vary per env.
+- native per-world light intensity, material parameters and texture selection
+  are available through opt-in `visual_dr` flags. Plane-floor textures are
+  separate from object materials; Repose's semantic face colours remain intact.
+
+Camera extrinsics use native `dr.cam_pos` / `dr.cam_quat` behind the saved-config
+compatible `rand_cam_extrinsics` wrapper. Direction DR already used mjlab;
+palette and task-label randomizers stay custom. Added DR is training-only.
+See [the simulator guide](simulator-upgrade.md) for ranges and limitations.

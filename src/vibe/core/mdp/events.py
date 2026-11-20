@@ -17,8 +17,9 @@ import functools
 
 import torch
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.envs.mdp import dr
 from mjlab.managers.event_manager import requires_model_fields
-from mjlab.utils.lab_api.math import quat_from_euler_xyz, quat_mul
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 
 __all__ = ["GROUND_RGBAS", "rand_terrain_color", "set_terrain_color",
            "rand_cam_extrinsics"]
@@ -178,18 +179,6 @@ def _nominal_geom_rgba(env: ManagerBasedRlEnv) -> torch.Tensor:
     return d[0] if "geom_rgba" in env.sim.per_world_default_fields else d
 
 
-def _nominal(env, field: str, cid: int, env_ids: torch.Tensor) -> torch.Tensor:
-    """Pre-DR default of one camera's `field`, as (len(env_ids), k).
-
-    Mirrors mjlab's `dr._core._select_default_values`: per-world fields keep each
-    world's own baseline, everything else is shared across envs.
-    """
-    d = env.sim.get_default_field(field)
-    if field in env.sim.per_world_default_fields:
-        return d[env_ids, cid]
-    return d[cid].unsqueeze(0).expand(len(env_ids), -1)
-
-
 @requires_model_fields("cam_pos", "cam_quat")
 def rand_cam_extrinsics(
     env: ManagerBasedRlEnv,
@@ -198,34 +187,14 @@ def rand_cam_extrinsics(
     pos_range: tuple[float, float] = (-0.02, 0.02),
     rot_range: tuple[float, float] = (-0.035, 0.035),
 ) -> None:
-    """Per-env camera MOUNTING error: position + RPY, off the nominal pose.
+    """Legacy callable delegating camera mounting DR to native mjlab events.
 
-    mjlab ships `dr.cam_{pos,quat}`, but they resolve the camera through an
-    Entity's own spec, and the head cam is a scene SENSOR welded onto the MERGED
-    spec (`CameraSensorCfg.parent_body`) — it belongs to no entity, so
-    `SceneEntityCfg(..., camera_names=...)` cannot see it. Hence this local term.
-    Same math as mjlab's (perturbation PRE-multiplied onto the DEFAULT quat, read
-    through `sim.get_default_field`, so repeated calls never accumulate) and the
-    same per-world write path as `rand_terrain_color`.
-
-    Defaults are tight on purpose: at 112x63 the 69° horizontal FOV spans 7 patch
-    columns (~9.9°/patch), so ±2° is a fifth of a patch — a plausible bolt-up
-    error rather than a re-aimed camera.
+    Keep the saved-config import path, startup timing and ranges. The camera is
+    attached to the robot in the compiled scene, so native entity selection works
+    for both ordinary and variant scenes. Native sampling may change RNG order.
     """
-    if env_ids is None:
-        env_ids = torch.arange(env.num_envs, device=env.device)
-    env_ids = env_ids.to(env.device, dtype=torch.long)
-    cid = env.sim.mj_model.camera(sensor_name).id
-    n = len(env_ids)
-
-    def _u(rng: tuple[float, float]) -> torch.Tensor:
-        return torch.empty(n, 3, device=env.device).uniform_(*rng)
-
-    rpy = _u(rot_range)
-    q = quat_mul(
-        quat_from_euler_xyz(rpy[:, 0], rpy[:, 1], rpy[:, 2]),
-        _nominal(env, "cam_quat", cid, env_ids).contiguous(),
-    )
-    env.sim.model.cam_pos[env_ids, cid] = (
-        _nominal(env, "cam_pos", cid, env_ids) + _u(pos_range))
-    env.sim.model.cam_quat[env_ids, cid] = q
+    camera = SceneEntityCfg("robot", camera_names=sensor_name)
+    camera.resolve(env.scene)
+    dr.cam_quat(env, env_ids, asset_cfg=camera, roll_range=rot_range,
+                pitch_range=rot_range, yaw_range=rot_range)
+    dr.cam_pos(env, env_ids, asset_cfg=camera, ranges=pos_range, operation="add")

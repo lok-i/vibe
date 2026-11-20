@@ -31,6 +31,7 @@ from vibe.core.env_cfgs import (
     apply_stage_render,
     assert_play_is_clean,
     domain_state,
+    with_vision_knobs,
 )
 from vibe.tasks.perloco.config.g1 import observation_cfgs as oc
 
@@ -100,4 +101,4 @@ def _vision(orcs_factory, *, play: bool, **orcs_kw) -> ManagerBasedRlEnvCfg:
     # CURBS keep their level-tracking hue — only the flat tile under them has
     # to match the other families.
     apply_stage_render(cfg, play=play, ground_rgba=TILE_FLOOR_RGBA)
-    return cfg
+    return with_vision_knobs(cfg, play=play)

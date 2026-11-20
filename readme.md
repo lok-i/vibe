@@ -18,13 +18,14 @@ Python itself.
 
 ```bash
 git clone https://github.com/lok-i/vibe && cd vibe
-uv venv --prompt vibe
-source .venv/bin/activate
-bash scripts/setup/sync_deps.sh     # Vibe + pinned deps
+bash scripts/setup/sync_deps.sh     # creates Python 3.12 .venv; installs Vibe + pinned deps once
+source .venv/bin/activate           # for the commands below
 bash scripts/setup/sync_data.sh     # all | inhouse | omre | grail
 ```
 
 data modes, dependencies, troubleshooting: [docs/setup.md](docs/setup.md).
+Candidate simulator stack, renderer selection and native visual DR:
+[simulator upgrade](docs/simulator-upgrade.md).
 
 ## usage
 

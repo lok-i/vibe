@@ -11,6 +11,7 @@
 | `_patch_inductor_tf32` | one tf32 API, so Inductor does not crash on the mix | without `--agent.torch-compile-mode` (besides the precision call) |
 | `_patch_amp_env_override` | `VIBE_AMP=bfloat16` sets the agent amp dtype, play included | `VIBE_AMP` unset |
 | `_patch_variant_scene_indexing` | a camera on a variant scene left every entity at body id -1 | the scene spec is not stale |
+| `_patch_render_backend_override` | `VIBE_RENDER_BACKEND` selects the policy camera backend for play/export | unset or non-ViBe task |
 
 The script patches are ONE global each and orcs applies its own at `import orcs`; vibe patches
 last, so it must cover the union (`orcs.MULTI_CLIP_CFGS`, the parent's `--agent` choices).
@@ -77,6 +78,7 @@ def apply() -> None:
     _patch_inductor_tf32()
     _patch_amp_env_override()
     _patch_variant_scene_indexing()
+    _patch_render_backend_override()
 
 
 def _patch_variant_scene_indexing() -> None:
@@ -419,3 +421,33 @@ def _patch_play_init_agent() -> None:
 
     play.PlayConfig = PlayConfig
     play.run_play = run_play
+
+
+def _patch_render_backend_override() -> None:
+    """Apply the play/export renderer override at construction, after discovery.
+
+    Reading it at registration would reject PerLoco while importing unrelated
+    tasks. Keep the chosen backend in the config saved with the run.
+    """
+    import functools
+    import os
+
+    from mjlab.envs import ManagerBasedRlEnv
+
+    from vibe.core.env_cfgs import VibeEnvCfg
+    from vibe.core.rendering import configure_backend
+
+    if getattr(ManagerBasedRlEnv.__init__, "_vibe_render_backend", False):
+        return
+    original = ManagerBasedRlEnv.__init__
+
+    @functools.wraps(original)
+    def initialize(self, cfg, *args, **kwargs):
+        if isinstance(cfg, VibeEnvCfg):
+            backend = os.environ.get("VIBE_RENDER_BACKEND", cfg.render_backend)
+            configure_backend(cfg, backend)
+            cfg.render_backend = backend
+        return original(self, cfg, *args, **kwargs)
+
+    initialize._vibe_render_backend = True
+    ManagerBasedRlEnv.__init__ = initialize

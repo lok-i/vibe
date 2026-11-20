@@ -43,7 +43,9 @@ bundled in the VIBE Python distribution:
 | [ORCS](https://github.com/lok-i/orcs) | Privileged task mechanics — commands, rewards, terminations, terrain staging, the robustness domain | BSD-3-Clause |
 | [SONIC](https://github.com/NVlabs/GR00T-WholeBodyControl) via [Mocke](https://github.com/lok-i/mocke) | Frozen motion prior and the obs/action contract the ported checkpoints are bit-coupled to | Apache-2.0 code; NVIDIA Open Model License weights |
 | [RSL-RL](https://github.com/leggedrobotics/rsl_rl), via the [fork](https://github.com/lok-i/rsl_rl) carrying the SONIC/extractor/PPOAux stack | Learning framework | BSD-3-Clause; the fork's delta is documented in its `FORK.md` |
-| [mjlab](https://github.com/mujocolab/mjlab) | Manager-based simulation framework | Its own distribution and license |
+| [mjlab](https://github.com/mujocolab/mjlab) | Manager-based simulation framework; compatibility patch carried by ORCS | Apache-2.0; ORCS preserves the license and identifies modified sources in `patches/README.md` |
+| [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp), [Warp](https://github.com/NVIDIA/warp) | Physics and native batch rendering | Apache-2.0 as distributed upstream |
+| [warp-optix](https://github.com/NVIDIA/warp-optix) / PyOptiX | Optional RTX renderer bindings | Their upstream distributions and included licenses; NVIDIA OptiX SDK terms apply to bundled SDK components |
 | [OmniRetarget Dataset](https://huggingface.co/datasets/omniretarget/OmniRetarget_Dataset) | Retargeted terrain and object motions | MIT as declared by its dataset card |
 | [GRAIL](https://github.com/NVlabs/GRAIL) | Terrain-motion source data | NVIDIA's upstream repository and data terms |
 | `transformers`, `einops`, `omegaconf` | Backbone loading and configuration | Apache-2.0 / MIT as published |
