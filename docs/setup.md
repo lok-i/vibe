@@ -42,7 +42,10 @@ live-vs-validated diff at import. Simulator sources also live in `deps.lock`:
 mjlab 1.6.1 plus ORCS's reviewed compatibility patch, and an immutable
 mujoco-warp main snapshot. See [the simulator guide](simulator-upgrade.md).
 `sync_deps.sh` passes all editables and requested extras to one uv resolution,
-ignoring dependency-owned uv sources. Do not independently install extras or
+ignoring dependency-owned uv sources. `requirements.lock` freezes the tested
+registry dependencies, including optional export/OptiX packages; constraints
+do not install unused extras. Python provisioning is pinned to 3.12.12.
+Do not independently install extras or
 run `uv sync` inside dependencies: that can replace the rsl_rl fork.
 
 The released ViBe 0.1.2 uses ORCS v0.1.1. This candidate retains ViBe's existing

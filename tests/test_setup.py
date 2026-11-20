@@ -35,6 +35,10 @@ def test_simulator_sources_and_manifests_agree() -> None:
         requirements = [{r for r in m["dependencies"] if r.startswith(prefix)}
                         for m in manifests]
         assert requirements[0] and requirements[0] == requirements[1]
+    constraints = set((REPO / "requirements.lock").read_text().splitlines())
+    for requirement in manifests[0]["dependencies"]:
+        if "==" in requirement and not requirement.startswith(("mjlab==", "mujoco-warp==")):
+            assert requirement.replace("[rendering]", "") in constraints
 
 
 def test_vibe_installs_orcs_grail_staging_dependency() -> None:

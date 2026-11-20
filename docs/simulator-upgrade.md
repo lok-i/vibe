@@ -37,8 +37,12 @@ setup creates `.venv`, applies the exact source patch, and resolves all local
 editables and extras together. Re-running it verifies source revisions, patch
 contents, editable origins and dependency compatibility. It refuses unrelated
 active environments, wrong-version existing environments and unreviewed patch
-edits. Keep the old checkout/environment for comparison. Transitive dependencies
-outside the explicitly pinned simulator/policy stack still follow package bounds.
+edits. Keep the old checkout/environment for comparison. `requirements.lock`
+freezes the tested Linux/Python 3.12.12 registry packages, including optional
+extras, while `deps.lock` owns the editable Git sources. Refresh package
+constraints from a clean resolved environment when intentionally upgrading;
+exclude investigation-only tooling. Installing without these constraints is
+not the documented candidate environment.
 
 ## Rendering
 

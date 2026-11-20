@@ -258,7 +258,8 @@ install_code() {
         [ "$pip_install" != 1 ] || args+=(-e "$REPO_ROOT/$rel_path")
     done <<< "$rows"
     python "$LOCK_HELPER" patch "$REPO_ROOT"
-    "${PIP_CMD[@]}" install --no-sources --default-index https://pypi.org/simple --python "$VIRTUAL_ENV/bin/python" "${args[@]}"
+    "${PIP_CMD[@]}" install --no-sources --default-index https://pypi.org/simple \
+        --python "$VIRTUAL_ENV/bin/python" --constraint "$REPO_ROOT/requirements.lock" "${args[@]}"
     "${PIP_CMD[@]}" check --python "$VIRTUAL_ENV/bin/python"
     python "$LOCK_HELPER" check-install "$REPO_ROOT"
 }
