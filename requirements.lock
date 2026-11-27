@@ -34,8 +34,8 @@ grpcio==1.85.3
 hf-xet==1.8.0
 huggingface-hub==0.36.2
 idna==3.20
-imageio-ffmpeg==0.8.1
 imageio==2.38.2
+imageio-ffmpeg==0.7.0
 iniconfig==2.3.1
 invoke==2.2.1
 ipython-pygments-lexers==1.1.1
@@ -136,7 +136,7 @@ urllib3==2.8.0
 usd-core==26.11
 viser==1.1.1
 wandb==0.28.2
-warp-lang==1.18.0
+warp-lang==1.19.0
 warp-optix==0.3.0
 wcwidth==0.9.4
 websockets==16.1.1

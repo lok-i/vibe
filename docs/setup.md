@@ -39,7 +39,7 @@ rsl_rl ──► mocke ──► orcs ──► vibe       one direction; a term
 `deps.lock` pins each at a SHA; bump = edit `sha`, re-run the sync. One venv holds one
 editable install per package, so vibe's lock wins over orcs's; `orcs.core.deps` prints the
 live-vs-validated diff at import. Simulator sources also live in `deps.lock`:
-mjlab 1.6.1 plus ORCS's reviewed compatibility patch, and an immutable
+pinned mjlab main plus ORCS's reviewed compatibility patch, and an immutable
 mujoco-warp main snapshot. See [the simulator guide](simulator-upgrade.md).
 `sync_deps.sh` passes all editables and requested extras to one uv resolution,
 ignoring dependency-owned uv sources. `requirements.lock` freezes the tested

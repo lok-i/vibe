@@ -9,10 +9,10 @@ training result or measured training speedup is established by the smoke checks.
 | Component | Candidate |
 |---|---|
 | Python | 3.12.12 |
-| mjlab | 1.6.1, upstream `11ffee9816e1d0644e538854bfb8dd8acb82ebba` plus ORCS's reviewed patch (`1.6.1+vibe.1`) |
+| mjlab | main `d872bfd2b048da657345c07669172fa284b38abf` plus ORCS's reviewed patch (`1.6.0+vibe.20261126`) |
 | MuJoCo | `mujoco-core[rendering]==4.0.1` |
-| mujoco-warp | main snapshot `e0226800bba7cc09f252f6c8e1a5d922c422f4de`, reporting 4.0.1 |
-| Warp | 1.18.0 |
+| mujoco-warp | main snapshot `8f5b9f116bb26ee2f629ce483511f50849ca3df3`, reporting 4.0.1 |
+| Warp | 1.19.0 |
 | Optional OptiX bindings | `warp-optix==0.3.0`, PyOptiX 9.1.1 |
 | rsl_rl | ViBe fork `215b6f4ceda569d2ca39df64dd679b9af15375cb`, unchanged |
 | Torch / torchvision | 2.15.0 / 0.29.2, retained from the baseline environment |
@@ -43,6 +43,43 @@ extras, while `deps.lock` owns the editable Git sources. Refresh package
 constraints from a clean resolved environment when intentionally upgrading;
 exclude investigation-only tooling. Installing without these constraints is
 not the documented candidate environment.
+
+## G1 and task compatibility
+
+The robot retains its pre-upgrade mechanical configuration, including the absence
+of the eight coupled ankle stops added to upstream G1. ORCS owns this preservation;
+see [G1 compatibility](https://github.com/lok-i/orcs/blob/32cab22cd17047946e1d1a28a170bab571ad2ebc/docs/g1-compatibility.md) for the exact
+scope, upstream reference and compiled-model regression guard. The patch also
+preserves the original world-frame body velocity rewards under their saved-config
+import paths. See [API migration](simulator-api-migration.md) for `SetConstGroup`,
+manual event replay and cache behavior. Solver and reset fixes can still change
+trajectories; configuration preservation is not checkpoint parity.
+
+Until the local dependency commit is published, read the same document at
+`dependencies/orcs/docs/g1-compatibility.md` in the prepared checkout.
+
+## Deterministic execution
+
+Physics determinism defaults off. Enable it before environment construction:
+
+```bash
+train Vibe-Repose-BigCubeFloor-ImgFeat-Ext --env.sim.deterministic True
+play Vibe-Repose-BigCubeFloor-ImgFeat-Ext --agent release --viewer native \
+  --num-envs 1 --env.sim.deterministic True --env.seed 42
+```
+
+`--agent release` loads the original released weights. It does not imply those
+weights were trained on this stack. Play retains its usual clean render domain;
+training randomization is exercised with training configurations in the tests.
+The physics flag is recorded in `params/env.yaml` and the logger's environment
+configuration. Tracking evaluation and the repeatability harness accept the same
+`--env.sim.deterministic True` spelling.
+
+Repeatability is scoped to the same GPU model, environment count, software,
+precision/compile settings and seeds. It is not cross-GPU or cross-version parity.
+PyTorch policy/encoder/learning repeatability requires separate validation. Buffer
+exhaustion invalidates the claim; backend warnings remain enabled. Solver and
+line-search iteration limits are reported separately from capacity overflows.
 
 ## Rendering
 
@@ -84,6 +121,44 @@ and texture options support plane terrain (Repose/Uolm), and reject rooms and
 generated PerLoco terrain. Textures never attach to manipulated objects or
 Repose's semantic cube faces. Native RNG consumption may differ from the prior
 custom camera function; identical seeds do not imply identical rollouts.
+
+## Repeatability and capacity checks
+
+Use separate processes, with training noise and events enabled:
+
+```bash
+.venv/bin/python scripts/repeat_check.py --task Vibe-Repose-BigCubeFloor-ImgFeat-Ext \
+  --num-envs 4096 --steps 1000 --output logs/repose-repeat
+.venv/bin/python scripts/repeat_check.py --task Vibe-Dodge-ConeFast-ImgFeat-Ext \
+  --num-envs 2048 --mode ppo --iterations 100 --output logs/dodge-ppo-repeat
+```
+
+`--graphs off` disables graph capture, not just conditional solver nodes.
+`--deterministic False` is a comparison condition; it is allowed to repeat by
+chance. `--jacobian dense` explicitly selects a different solver layout for
+qualification; it is recorded and never enabled implicitly. Small environment
+counts and shorter iterations are useful local smokes but do not qualify the
+production sizes.
+
+Each worker writes hashes, resolved configs and a summary under its output
+folder. Comparisons report the first differing step/iteration and field. The
+rollout checks all observation groups, actions, physics state, rewards and done
+flags, including a partial reset. Capacity monitoring samples physics substeps;
+contact capacity is aggregate across worlds. PPO checks include model, optimizer
+and Torch RNG state in addition to non-timing scalars. Outputs remain local.
+
+`--mode benchmark` runs one process without hashing or buffer-monitoring hooks.
+It reports collection/learning times after warmup and a separate physics-step
+measurement. GPU memory is a sampled device-wide high-water mark, including Warp
+allocations, plus Torch's allocator peak. Compare identical task counts and
+Jacobian layouts with determinism off/on; record the original layout separately.
+
+MuJoCo Warp's `auto` Jacobian selects sparse storage above 32 velocities. The
+pinned Warp deterministic sparse-Hessian path can exceed its signed-32-bit
+workspace-array limit at large batches during graph capture. Treat this as a
+failed configuration, not a renderer fallback or a passing small smoke. Dense
+layout is an explicit diagnostic alternative requiring its own qualification;
+it is not a promise of identical trajectories to sparse solving.
 
 ## Local checks and subsequent training
 

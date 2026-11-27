@@ -44,6 +44,8 @@ def finite(value) -> None:
 def run(task: str, backend: str, play: bool, args) -> dict:
     cfg = load_env_cfg(task, play=play)
     cfg.scene.num_envs = args.num_envs
+    cfg.seed = args.seed
+    cfg.sim.deterministic = args.deterministic
     plane = cfg.scene.terrain is not None and cfg.scene.terrain.terrain_type == "plane"
     options = VisualDrCfg(lighting=True, floor_material=plane, floor_textures=plane)
     cfg = replace(cfg, render_backend=backend,
@@ -56,6 +58,7 @@ def run(task: str, backend: str, play: bool, args) -> dict:
         assert context is not None
         assert context.render_context.backend == backend, "Renderer silently fell back"
         assert env.sim.step_graph is not None, "Physics CUDA graph was lost"
+        assert bool(env.sim.wp_model.opt.deterministic) == args.deterministic
         assert (env.sim.sense_graph is not None) == (backend == "warp")
         policy = runner = None
         wrapped = None
@@ -111,6 +114,7 @@ def run(task: str, backend: str, play: bool, args) -> dict:
                 env.reset(env_ids=torch.tensor([0, args.num_envs - 1], device="cuda:0").unique())
                 obs = wrapped.get_observations() if wrapped is not None else env.get_observations()
         rgb = env.scene["head_cam"].data.rgb
+        assert bool(env.sim.wp_model.opt.deterministic) == args.deterministic
         assert rgb.dtype == torch.uint8 and rgb.shape[0] == args.num_envs
         assert int(rgb.max()) > int(rgb.min()), "Camera produced a constant frame"
         variants = {name: assignment.cpu().tolist()
@@ -130,6 +134,7 @@ def run(task: str, backend: str, play: bool, args) -> dict:
                     changed = True
             assert changed, "PPO smoke did not update any trainable actor parameters"
         return {"status": "ok", "rgb_shape": list(rgb.shape),
+                "deterministic": cfg.sim.deterministic,
                 "visual_dr": asdict(cfg.visual_dr),
                 "variants": variants,
                 "viser_update": args.viser,
@@ -154,6 +159,7 @@ def main() -> None:
     parser.add_argument("--num-envs", type=int, default=4)
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--deterministic", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--visual-dr", action="store_true",
                         help="Train: lighting everywhere, material/textures on plane floors only.")
     parser.add_argument("--save-images", action="store_true")
