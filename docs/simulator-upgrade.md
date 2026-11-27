@@ -1,8 +1,8 @@
 # Simulator candidate
 
-`feat/mjlab-upgrade` is a local review candidate. Dependency commits must be
-published before a fresh remote clone can fetch its final ORCS pin. No full
-training result or measured training speedup is established by the smoke checks.
+`feat/mjlab-upgrade` is a review candidate. Both ViBe and ORCS dependency commits
+are available on their corresponding remote branches. No full training result
+or measured training speedup is established by the smoke checks.
 
 ## Source and installation
 
@@ -55,7 +55,7 @@ import paths. See [API migration](simulator-api-migration.md) for `SetConstGroup
 manual event replay and cache behavior. Solver and reset fixes can still change
 trajectories; configuration preservation is not checkpoint parity.
 
-Until the local dependency commit is published, read the same document at
+The installed copy of that document is at
 `dependencies/orcs/docs/g1-compatibility.md` in the prepared checkout.
 
 ## Deterministic execution

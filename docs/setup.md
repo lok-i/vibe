@@ -49,7 +49,7 @@ Do not independently install extras or
 run `uv sync` inside dependencies: that can replace the rsl_rl fork.
 
 The released ViBe 0.1.2 uses ORCS v0.1.1. This candidate retains ViBe's existing
-asset and motion-data pins; its ORCS code changes are still local pending review.
+asset and motion-data pins; its ORCS code changes are on `feat/mjlab-upgrade`.
 ORCS's newer EgoHTR data is not required by the ViBe tasks; advancing the shared
 motion-data pin would also add demonstrations to Uolm's training roster.
 The ORCS upgrade removes robot reset perturbations during play for Dodge and

@@ -77,6 +77,23 @@ train Vibe-Dodge-ConeFast-ImgFeat-Ext --env.scene.num-envs 4096 \
 > 1e-1 instead of 1e-3 ([metrics](metrics.md)) and reward stalls below the fp32 run. Leave it
 > off unless that key stays low on your card.
 
+For a controlled comparison with the released Repose training recipe
+(`vbp/repose/011pgzbh`), use:
+
+```bash
+WANDB_USERNAME=vbp .venv/bin/python scripts/train_repose_release.py \
+  --backend warp --run-name mjlab-upgrade-warp
+# Use --backend optix for the paired run on compatible hardware.
+```
+
+This starts a fresh adapter from the frozen SONIC base: seed 42, 4096 worlds,
+24-step rollouts, BF16, 60,000 iterations and 50,000-iteration phase annealing.
+It explicitly restores the release's 534-input critic by excluding the later
+`object_id` and `robot_root_pos_env` terms. Standard task factories remain
+unchanged. Metrics/configurations go to W&B; checkpoints remain local. Use
+`--iterations 2 --logger tensorboard` for a bounded preflight. The upgraded
+physics and native camera DR can change trajectories relative to the release.
+
 ## encoders
 
 ```bash
