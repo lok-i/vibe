@@ -48,7 +48,7 @@ def main():
             for _ in range(24):
                 obs, _, _, _ = env.step(actor(obs))
         # Clone outside inference mode so update-style autograd is valid.
-        obs = obs.clone()
+        obs = obs.clone().to("cuda:0")
         before = {k: v.clone() for k, v in actor.state_dict().items()}
         noise = torch.randn(4096, env.num_actions, device="cuda")
         results = []
@@ -64,7 +64,7 @@ def main():
                 actor(obs, stochastic_output=True)
                 mean = actor.output_mean.clone()
                 std = actor.output_std.clone()
-                cached = actor.storage_obs(obs)
+                cached = actor.cache_obs(obs)
             mean, std, cached = mean.clone(), std.clone(), cached.clone()
             actions = mean + std * noise
             old_logp = torch.distributions.Normal(mean, std).log_prob(actions).sum(-1)
@@ -74,7 +74,7 @@ def main():
                 replay = TensorDict({
                     k: v.repeat((repeats,) + (1,) * (v.ndim - 1))
                     for k, v in cached.items()
-                }, batch_size=[batch])
+                }, batch_size=[batch], device="cuda:0")
                 # Grad enabled, as in PPO, but never optimize or update normalizers.
                 prediction = actor(replay)[:4096]
                 predicted_std = std
