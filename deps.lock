@@ -30,7 +30,7 @@
     },
     "orcs": {
         "url": "https://github.com/lok-i/orcs.git",
-        "sha": "32cab22cd17047946e1d1a28a170bab571ad2ebc",
+        "sha": "5c90840f8b9b94fb5a5f780361e00c79632e5c67",
         "path": "dependencies/orcs",
         "pip_install": true,
         "lfs": false
@@ -50,6 +50,9 @@
         "sha": "8f5b9f116bb26ee2f629ce483511f50849ca3df3",
         "path": "dependencies/mujoco_warp",
         "pip_install": true,
-        "lfs": false
+        "lfs": false,
+        "patches": [
+            "dependencies/orcs/patches/mujoco-warp-optix.patch"
+        ]
     }
 }

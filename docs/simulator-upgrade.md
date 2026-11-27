@@ -22,6 +22,14 @@ Its version string alone does not identify that code: `deps.lock` owns the SHA.
 The mjlab patch adapts geometry/site poses to the backend's `wxyz` quaternions,
 camera backend selection, graph capture boundaries, viewer transforms and
 dependency metadata. ORCS owns the patch; ViBe references it through its lock.
+
+ORCS also carries `patches/mujoco-warp-optix.patch`: it exposes a rendering-only
+world extent so mjlab can include its translated environment origins in OptiX's
+world cells. The extent includes the largest origin coordinate plus MJWarp's
+usual local motion margin (`max(4 * model.stat.extent, 1)`). This leaves physics
+coordinates and camera clipping unchanged. Bounded geometry must stay inside
+that region; changing terrain origins after context creation requires recreating
+the sensor context. Warp does not use this bound.
 There is no separately published mjlab fork or package release.
 
 In a fresh checkout, one command installs the complete code environment:
