@@ -49,3 +49,8 @@ separate validation question from import/configuration compatibility.
 The tracking-specific evaluation CLI remains limited to tracking tasks. ViBe's
 task-independent `scripts/repeat_check.py` uses training configurations and the
 released actor for repeatability evaluation; both accept the determinism flag.
+
+This patch does not qualify every optional upstream feature. In particular,
+`TactileSensor.taxel_pos_w()` still reads the removed `geom_xmat` field and needs
+a quaternion-data port before use, including tactile debug visualization. ViBe's
+tasks do not use that sensor.
