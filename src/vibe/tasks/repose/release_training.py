@@ -1,13 +1,13 @@
-"""Training recipe for the released Repose run, with the current simulator.
+"""Explicit critic compatibility for the released Repose recipe (011pgzbh).
 
-The source run is vbp/repose/011pgzbh. This is a new training run from the frozen
-SONIC base, not a resume from its released adapter. Standard task factories are
-unchanged; this explicit recipe restores its original 534-input critic.
+Selected through the normal train CLI with --env.release-critic True.
+Training hyperparameters remain ordinary CLI options; this only selects the
+original ordered 534-input critic, leaving the actor and task mechanics intact.
 """
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
-from mjlab.scripts.train import TrainConfig
+from vibe.core.env_cfgs import VibeEnvCfg
 
 TASK = "Vibe-Repose-BigCubeFloor-ImgFeat-Ext"
 CRITIC_TERMS = (
@@ -21,33 +21,22 @@ CRITIC_TERMS = (
 )
 
 
-def training_config(backend: str = "warp") -> TrainConfig:
-    """Build a fresh config; renderer is the only learning-config variation."""
-    if backend not in ("warp", "optix"):
-        raise ValueError(f"Unsupported renderer: {backend}")
-    cfg = TrainConfig.from_task(TASK)
-    env = replace(cfg.env, render_backend=backend)
-    terms = env.observations["critic"].terms
-    expected = set(CRITIC_TERMS) | {"object_id", "robot_root_pos_env"}
-    if set(terms) != expected:
-        raise ValueError("Repose critic changed; review the release training recipe")
-    env.observations["critic"].terms = {name: terms[name] for name in CRITIC_TERMS}
-    env.scene.num_envs = 4096
-    env.seed = 42
-    env.sim.deterministic = False
-    env.sim.mujoco.jacobian = "auto"
-    env.commands["motion"].init_phase_anneal_iterations = 50000
+@dataclass
+class ReposeEnvCfg(VibeEnvCfg):
+    release_critic: bool = False
+    """Use the released colour-task critic layout; default keeps today's layout."""
 
-    agent = cfg.agent
-    agent.seed = 42
-    agent.num_steps_per_env = 24
-    agent.max_iterations = 60000
-    agent.save_interval = 2000
-    agent.amp_dtype = "bfloat16"
-    agent.experiment_name = "0p7p15/0p7p12/ExtendSimToReal"
-    agent.wandb_project = "repose"
-    agent.logger = "wandb"
-    agent.resume = False
-    # Keep metric/config logging online, and checkpoints on the training host.
-    agent.upload_model = False
-    return replace(cfg, env=env)
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.release_critic:
+            return
+        terms = self.observations["critic"].terms
+        expected = set(CRITIC_TERMS) | {"object_id", "robot_root_pos_env"}
+        # Reconstructing a config (tyro/dataclasses.replace) must be idempotent.
+        if set(terms) not in (expected, set(CRITIC_TERMS)):
+            raise ValueError("Repose critic changed; review the release critic layout")
+        self.observations = dict(self.observations)
+        self.observations["critic"] = replace(
+            self.observations["critic"],
+            terms={name: terms[name] for name in CRITIC_TERMS},
+        )

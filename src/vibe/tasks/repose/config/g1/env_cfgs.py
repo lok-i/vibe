@@ -22,6 +22,7 @@ Module layout: `wbc.py` (frozen-base assembly) · `sensors.py` (camera + contact
 
 from __future__ import annotations
 
+from dataclasses import fields
 from typing import Literal
 
 from mjlab.envs import ManagerBasedRlEnvCfg
@@ -42,12 +43,12 @@ from vibe.core.env_cfgs import (
     QUERY_NOISY_GROUPS,
     apply_render_domain,
     apply_stage_render,
-    with_vision_knobs,
 )
 from vibe.tasks.repose import mdp
 from vibe.tasks.repose.config.g1 import observation_cfgs as oc
 from vibe.tasks.repose.config.g1 import sensors, wbc
 from vibe.tasks.repose.mdp.commands import ReposeMotionCommandCfg
+from vibe.tasks.repose.release_training import ReposeEnvCfg
 from vibe.tasks.repose.repose_cube_env_cfg import make_repose_cube_env_cfg
 
 ReposeScene = Literal["big_cube_floor", "small_cube_table"]
@@ -392,9 +393,9 @@ def g1_repose_cube_env_cfg(
         # colour relabel is repose's task channel), and the stage replaces it.
         apply_stage_render(cfg, play=play)
 
-    # LAST, and after the play overrides on purpose: this adds a FIELD, never a
-    # term or an event, so it cannot change what the play invariant sees.
-    return with_vision_knobs(cfg, play=play)
+    # Add run-level options after the play overrides. Critic compatibility is
+    # opt-in through the CLI; all factory defaults retain their observation layout.
+    return ReposeEnvCfg(**{f.name: getattr(cfg, f.name) for f in fields(cfg)}, play=play)
 
 
 def _play_overrides(cfg: ManagerBasedRlEnvCfg) -> None:

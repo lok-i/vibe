@@ -1,51 +1,62 @@
-"""Keep reproduction overrides explicit and separate from standard task defaults."""
+"""The standard CLI can select the released critic without changing task mechanics."""
 
-from dataclasses import asdict
-from functools import partial
+from dataclasses import asdict, replace
 
 import mjlab  # noqa: F401
+import pytest
+import tyro
+from mjlab.scripts.train import TrainConfig
 from mjlab.tasks.registry import load_env_cfg
 
-from vibe.tasks.repose.release_training import CRITIC_TERMS, TASK, training_config
+from vibe.tasks.repose.release_training import CRITIC_TERMS, TASK
 
 
-def comparable(value):
-    # Copies of partials compare by identity; compare their actual call contract.
-    if isinstance(value, partial):
-        return value.func, comparable(value.args), comparable(value.keywords)
-    if isinstance(value, dict):
-        return {k: comparable(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return tuple(comparable(v) for v in value)
-    return value
-
-
-def test_release_recipe_restores_critic_without_mutating_task():
-    cfg = training_config()
-    assert tuple(cfg.env.observations["critic"].terms) == CRITIC_TERMS
+def test_release_critic_is_explicit_and_does_not_mutate_standard_task():
     normal = load_env_cfg(TASK)
+    cfg = replace(normal, release_critic=True)
+    assert tuple(cfg.observations["critic"].terms) == CRITIC_TERMS
     assert {"object_id", "robot_root_pos_env"} <= normal.observations["critic"].terms.keys()
-    assert cfg.env.rewards == normal.rewards
-    assert cfg.env.terminations == normal.terminations
-    assert cfg.env.observations["policy"] == normal.observations["policy"]
-    assert cfg.env.observations["kv_tokens"] == normal.observations["kv_tokens"]
-    assert cfg.env.scene.num_envs == 4096
-    assert cfg.env.commands["motion"].init_phase_anneal_iterations == 50000
-    assert cfg.agent.num_steps_per_env == 24
-    assert cfg.agent.max_iterations == 60000
-    assert cfg.agent.seed == cfg.env.seed == 42
-    assert cfg.agent.amp_dtype == "bfloat16"
-    assert cfg.agent.resume is False and cfg.agent.upload_model is False
-    assert cfg.env.sim.deterministic is False
-    assert cfg.env.sim.mujoco.jacobian == "auto"
+    assert cfg.rewards == normal.rewards
+    assert cfg.terminations == normal.terminations
+    assert cfg.observations["policy"] == normal.observations["policy"]
+    assert cfg.observations["kv_tokens"] == normal.observations["kv_tokens"]
+    assert tuple(replace(cfg).observations["critic"].terms) == CRITIC_TERMS
+    assert not load_env_cfg(TASK).release_critic
 
 
-def test_renderer_pair_has_identical_learning_configuration(monkeypatch):
-    monkeypatch.delenv("VIBE_RENDER_BACKEND", raising=False)
-    warp, optix = training_config("warp"), training_config("optix")
-    assert asdict(warp.agent) == asdict(optix.agent)
-    assert optix.env.render_backend == "optix"
-    assert next(s for s in optix.env.scene.sensors if s.name == "head_cam").backend == "optix"
-    optix.env.render_backend = "warp"
-    next(s for s in optix.env.scene.sensors if s.name == "head_cam").backend = "warp"
-    assert comparable(asdict(warp.env)) == comparable(asdict(optix.env))
+def test_release_critic_rejects_an_unreviewed_layout():
+    cfg = load_env_cfg(TASK)
+    cfg.observations["critic"].terms.pop("joint_pos")
+    with pytest.raises(ValueError, match="critic changed"):
+        replace(cfg, release_critic=True)
+
+
+def test_standard_cli_selects_precision_and_release_critic():
+    common = [
+        "--env.release-critic", "True", "--env.render-backend", "warp",
+        "--env.scene.num-envs", "4096", "--agent.seed", "42",
+        "--env.commands.motion.init-phase-anneal-iterations", "50000",
+        "--agent.max-iterations", "5000", "--agent.upload-model", "False",
+    ]
+    def parse(extra):
+        return tyro.cli(TrainConfig, default=TrainConfig.from_task(TASK),
+                        args=common + extra, config=mjlab.TYRO_FLAGS)
+
+    bf16 = parse(["--agent.amp-dtype", "bfloat16",
+                  "--agent.bf16-reduced-precision-reduction", "False"])
+    off = parse(["--agent.amp-dtype", "None"])
+    assert tuple(bf16.env.observations["critic"].terms) == CRITIC_TERMS
+    assert tuple(off.env.observations["critic"].terms) == CRITIC_TERMS
+    assert bf16.agent.bf16_reduced_precision_reduction is False
+    assert off.agent.bf16_reduced_precision_reduction is None
+    assert off.agent.amp_dtype is None
+    assert bf16.env.scene.num_envs == off.env.scene.num_envs == 4096
+    assert bf16.env.commands["motion"].init_phase_anneal_iterations == 50000
+    assert bf16.agent.num_steps_per_env == 24
+    assert bf16.agent.resume is False and bf16.agent.upload_model is False
+    assert bf16.env.sim.deterministic is False
+    assert bf16.env.sim.mujoco.jacobian == "auto"
+    a, b = asdict(bf16.agent), asdict(off.agent)
+    assert {k for k in a if a[k] != b[k]} == {
+        "amp_dtype", "bf16_reduced_precision_reduction",
+    }

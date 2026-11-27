@@ -9,6 +9,7 @@
 | `_muffle_mesh_support_warning` | drops host-side GJK "mesh_support" spam on variant scenes (physics runs on mujoco_warp) | every other MuJoCo warning prints |
 | `_patch_put_data_nccdmax` | caps mujoco_warp's CCD scratch per world (`VIBE_NCCDMAX`, default 64) | the caller passes `nccdmax` itself |
 | `_patch_inductor_tf32` | one tf32 API, so Inductor does not crash on the mix | without `--agent.torch-compile-mode` (besides the precision call) |
+| `_patch_runner_precision` | apply and record ViBe CUDA accumulation controls before model construction | non-ViBe runner config |
 | `_patch_amp_env_override` | `VIBE_AMP=bfloat16` sets the agent amp dtype, play included | `VIBE_AMP` unset |
 | `_patch_variant_scene_indexing` | a camera on a variant scene left every entity at body id -1 | the scene spec is not stale |
 | `_patch_render_backend_override` | `VIBE_RENDER_BACKEND` selects the policy camera backend for play/export | unset or non-ViBe task |
@@ -79,6 +80,7 @@ def apply() -> None:
     _patch_amp_env_override()
     _patch_variant_scene_indexing()
     _patch_render_backend_override()
+    _patch_runner_precision()
 
 
 def _patch_variant_scene_indexing() -> None:
@@ -454,3 +456,30 @@ def _patch_render_backend_override() -> None:
 
     initialize._vibe_render_backend = True
     ManagerBasedRlEnv.__init__ = initialize
+
+
+def _patch_runner_precision() -> None:
+    """Apply ViBe precision controls to both default and task-specific runners."""
+    from functools import wraps
+
+    import torch
+    from mjlab.rl.runner import MjlabOnPolicyRunner
+
+    from vibe.core.runner import configure_precision
+
+    original = MjlabOnPolicyRunner.__init__
+
+    @wraps(original)
+    def init(self, env, train_cfg, log_dir=None, device="cpu"):
+        # This field exists only on ViBe configs. Leave other projects untouched.
+        precision = None
+        if "bf16_reduced_precision_reduction" in train_cfg:
+            precision = configure_precision(train_cfg, log_dir)
+        original(self, env, train_cfg, log_dir, device)
+        if precision is not None and (
+            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction
+            != precision["bf16_reduced_precision_reduction"]
+        ):
+            raise RuntimeError("BF16 accumulation setting changed during runner initialization")
+
+    MjlabOnPolicyRunner.__init__ = init

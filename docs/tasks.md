@@ -72,27 +72,39 @@ train Vibe-Dodge-ConeFast-ImgFeat-Ext --env.scene.num-envs 4096 \
   --agent.max-iterations 15000
 ```
 
-> **bf16.** The released Repose and Uolm runs also passed `--agent.amp-dtype bfloat16`, on an
-> RTX 5090. It holds there only: on a 3090 or L40S, `Diagnostics/logp_drift_mb0` sits near
-> 1e-1 instead of 1e-3 ([metrics](metrics.md)) and reward stalls below the fp32 run. Leave it
-> off unless that key stays low on your card.
+BF16 is opt-in (`--agent.amp-dtype bfloat16`). Validate numerical consistency
+on each GPU and Torch/CUDA stack using `Diagnostics/logp_drift_mb0`
+([metrics](metrics.md)); success on a previous stack does not establish parity.
+`--agent.bf16-reduced-precision-reduction False` requests conservative CUDA
+matmul accumulation while retaining BF16 autocast. Omit it to retain PyTorch's
+setting. The runner prints and logs effective precision settings, also saved in
+`params/precision.json`. `--agent.amp-dtype None` disables AMP; the existing TF32
+setting remains unchanged, so this is not strict IEEE FP32.
 
-For a controlled comparison with the released Repose training recipe
-(`vbp/repose/011pgzbh`), use:
+For comparison with the released Repose training recipe (`vbp/repose/011pgzbh`),
+use the standard CLI with all reproduction options visible:
 
 ```bash
-WANDB_USERNAME=vbp .venv/bin/python scripts/train_repose_release.py \
-  --backend warp --run-name mjlab-upgrade-warp
-# Use --backend optix for the paired run on compatible hardware.
+WANDB_USERNAME=vbp .venv/bin/train Vibe-Repose-BigCubeFloor-ImgFeat-Ext \
+  --env.release-critic True --env.render-backend warp \
+  --env.scene.num-envs 4096 --agent.seed 42 \
+  --env.commands.motion.init-phase-anneal-iterations 50000 \
+  --agent.num-steps-per-env 24 --agent.max-iterations 60000 \
+  --agent.save-interval 2000 --agent.amp-dtype bfloat16 \
+  --agent.experiment-name 0p7p15/0p7p12/ExtendSimToReal \
+  --agent.wandb-project repose --agent.upload-model False \
+  --agent.run-name mjlab-upgrade-warp
 ```
 
-This starts a fresh adapter from the frozen SONIC base: seed 42, 4096 worlds,
-24-step rollouts, BF16, 60,000 iterations and 50,000-iteration phase annealing.
-It explicitly restores the release's 534-input critic by excluding the later
-`object_id` and `robot_root_pos_env` terms. Standard task factories remain
-unchanged. Metrics/configurations go to W&B; checkpoints remain local. Use
-`--iterations 2 --logger tensorboard` for a bounded preflight. The upgraded
-physics and native camera DR can change trajectories relative to the release.
+`--env.release-critic True` restores the release's ordered 534-input critic by
+excluding the later `object_id` and `robot_root_pos_env` terms. It does not change
+the actor, rewards, terminations or standard task defaults. This starts a fresh
+adapter from the frozen SONIC base; no released adapter is resumed. Metrics and
+configurations go to W&B; checkpoints remain local. Use
+`--agent.max-iterations 2 --agent.logger tensorboard` for a bounded preflight.
+For a capped comparison, keep the original 50,000-iteration anneal so the early
+curriculum matches. Upgraded physics and camera DR can still change trajectories.
+Use `--env.render-backend optix` for a renderer comparison on compatible hardware.
 
 ## encoders
 
