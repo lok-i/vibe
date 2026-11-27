@@ -124,13 +124,15 @@ custom camera function; identical seeds do not imply identical rollouts.
 
 ## Repeatability and capacity checks
 
-Use separate processes, with training noise and events enabled:
+Use separate processes, with training noise and events enabled. At these large
+counts the pinned snapshot needs an explicit dense Jacobian for deterministic
+execution; the default sparse workspace limitation is described below:
 
 ```bash
 .venv/bin/python scripts/repeat_check.py --task Vibe-Repose-BigCubeFloor-ImgFeat-Ext \
-  --num-envs 4096 --steps 1000 --output logs/repose-repeat
+  --num-envs 4096 --jacobian dense --steps 1000 --output logs/repose-repeat
 .venv/bin/python scripts/repeat_check.py --task Vibe-Dodge-ConeFast-ImgFeat-Ext \
-  --num-envs 2048 --mode ppo --iterations 100 --output logs/dodge-ppo-repeat
+  --num-envs 2048 --jacobian dense --mode ppo --iterations 100 --output logs/dodge-ppo-repeat
 ```
 
 `--graphs off` disables graph capture, not just conditional solver nodes.
